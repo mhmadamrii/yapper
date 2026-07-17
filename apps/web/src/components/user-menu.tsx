@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Button } from "@yapper/ui/components/button";
+import { Link, useNavigate } from '@tanstack/react-router';
+import { Button } from '@yapper/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,10 +8,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@yapper/ui/components/dropdown-menu";
-import { Skeleton } from "@yapper/ui/components/skeleton";
+} from '@yapper/ui/components/dropdown-menu';
+import { Skeleton } from '@yapper/ui/components/skeleton';
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from '@/lib/auth-client';
 
 export default function UserMenu() {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ export default function UserMenu() {
                 fetchOptions: {
                   onSuccess: () => {
                     navigate({
-                      to: "/",
+                      to: '/',
                     });
                   },
                 },

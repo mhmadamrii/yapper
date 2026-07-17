@@ -1,30 +1,35 @@
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
 
-const DEFAULT_ENVIRONMENT = "preview";
-const VALID_ENVIRONMENTS = new Set(["development", "preview", "production"]);
-const VERCEL_COMMAND = ["pnpm", "exec", "vercel"] as const;
-const DEFAULT_FILES = ["apps/web/.env"];
+const DEFAULT_ENVIRONMENT = 'preview';
+const VALID_ENVIRONMENTS = new Set(['development', 'preview', 'production']);
+const VERCEL_COMMAND = ['pnpm', 'exec', 'vercel'] as const;
+const DEFAULT_FILES = ['apps/web/.env'];
 const SKIP_KEYS = new Set([]);
 const OVERRIDE_KEYS = new Map([]);
 
 const args = process.argv.slice(2);
-const separatorIndex = args.indexOf("--");
+const separatorIndex = args.indexOf('--');
 const scriptArgs = separatorIndex === -1 ? args : args.slice(0, separatorIndex);
-const forwardedArgs = separatorIndex === -1 ? [] : args.slice(separatorIndex + 1);
+const forwardedArgs =
+  separatorIndex === -1 ? [] : args.slice(separatorIndex + 1);
 
 const environment =
-  scriptArgs[0] && VALID_ENVIRONMENTS.has(scriptArgs[0]) ? scriptArgs[0] : DEFAULT_ENVIRONMENT;
-const remainingArgs = scriptArgs.slice(VALID_ENVIRONMENTS.has(scriptArgs[0] ?? "") ? 1 : 0);
+  scriptArgs[0] && VALID_ENVIRONMENTS.has(scriptArgs[0])
+    ? scriptArgs[0]
+    : DEFAULT_ENVIRONMENT;
+const remainingArgs = scriptArgs.slice(
+  VALID_ENVIRONMENTS.has(scriptArgs[0] ?? '') ? 1 : 0,
+);
 // Split remaining args into env-file paths and passthrough Vercel CLI flags.
 // A bare token counts as a file only when it exists on disk, so flags and their
 // values (e.g. `--scope my-team`) forward correctly regardless of argument order.
 const files: string[] = [];
 const passthroughArgs: string[] = [];
 for (const arg of remainingArgs) {
-  if (!arg.startsWith("-") && existsSync(arg)) {
+  if (!arg.startsWith('-') && existsSync(arg)) {
     files.push(arg);
   } else {
     passthroughArgs.push(arg);
@@ -34,7 +39,7 @@ const vercelArgs = [...passthroughArgs, ...forwardedArgs];
 const envFiles = files.length > 0 ? files : DEFAULT_FILES;
 
 if (envFiles.length === 0) {
-  console.log("No env files configured for this Vercel stack.");
+  console.log('No env files configured for this Vercel stack.');
   process.exit(0);
 }
 
@@ -46,14 +51,16 @@ for (const file of envFiles) {
     continue;
   }
 
-  for (const [key, value] of Object.entries(dotenv.parse(readFileSync(file, "utf8")))) {
+  for (const [key, value] of Object.entries(
+    dotenv.parse(readFileSync(file, 'utf8')),
+  )) {
     if (SKIP_KEYS.has(key)) continue;
     env.set(key, OVERRIDE_KEYS.get(key) ?? value);
   }
 }
 
 if (env.size === 0) {
-  console.log("No Vercel env vars found to sync.");
+  console.log('No Vercel env vars found to sync.');
   process.exit(0);
 }
 
@@ -63,7 +70,7 @@ const localKeys = [...env.entries()]
   .map(([key]) => key);
 if (localKeys.length > 0) {
   console.warn(
-    `Warning: ${localKeys.join(", ")} look${localKeys.length === 1 ? "s" : ""} like local-only value(s). Update them in your .env file(s) and re-run this sync if your deployed app should not point at local endpoints.`,
+    `Warning: ${localKeys.join(', ')} look${localKeys.length === 1 ? 's' : ''} like local-only value(s). Update them in your .env file(s) and re-run this sync if your deployed app should not point at local endpoints.`,
   );
 }
 
@@ -73,21 +80,21 @@ for (const [key, value] of env.entries()) {
     VERCEL_COMMAND[0],
     [
       ...VERCEL_COMMAND.slice(1),
-      "env",
-      "add",
+      'env',
+      'add',
       key,
       environment,
-      "--force",
-      "--yes",
-      "--non-interactive",
+      '--force',
+      '--yes',
+      '--non-interactive',
       ...vercelArgs,
     ],
     {
       input: `${value}\n`,
-      stdio: ["pipe", "inherit", "inherit"],
-      encoding: "utf8",
+      stdio: ['pipe', 'inherit', 'inherit'],
+      encoding: 'utf8',
       // Windows resolves bunx/npx/pnpm via .cmd shims, which need a shell
-      shell: process.platform === "win32",
+      shell: process.platform === 'win32',
     },
   );
 
@@ -102,4 +109,4 @@ for (const [key, value] of env.entries()) {
   }
 }
 
-console.log("Vercel env sync complete. Redeploy for changes to take effect.");
+console.log('Vercel env sync complete. Redeploy for changes to take effect.');

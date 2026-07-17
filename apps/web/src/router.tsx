@@ -1,24 +1,24 @@
-import { QueryCache, QueryClient } from "@tanstack/react-query";
-import { createRouter as createTanStackRouter } from "@tanstack/react-router";
-import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
-import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import type { AppRouter } from "@yapper/api/routers/index";
-import { env } from "@yapper/env/web";
-import { toast } from "sonner";
+import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { createRouter as createTanStackRouter } from '@tanstack/react-router';
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query';
+import { createTRPCClient, httpBatchLink } from '@trpc/client';
+import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
+import type { AppRouter } from '@yapper/api/routers/index';
+import { env } from '@yapper/env/web';
+import { toast } from 'sonner';
 
-import Loader from "./components/loader";
-import { routeTree } from "./routeTree.gen";
-import { TRPCProvider } from "./utils/trpc";
+import Loader from './components/loader';
+import { routeTree } from './routeTree.gen';
+import { TRPCProvider } from './utils/trpc';
 
 function getServerUrl(url: string) {
-  const normalized = url.endsWith("/") ? url.slice(0, -1) : url;
+  const normalized = url.endsWith('/') ? url.slice(0, -1) : url;
 
-  if (!normalized.startsWith("/")) {
+  if (!normalized.startsWith('/')) {
     return normalized;
   }
 
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     return `${window.location.origin}${normalized}`;
   }
 
@@ -28,11 +28,13 @@ function getServerUrl(url: string) {
     }
   ).process?.env;
   const vercelUrl =
-    processEnv?.VERCEL_ENV === "production"
+    processEnv?.VERCEL_ENV === 'production'
       ? (processEnv?.VERCEL_PROJECT_PRODUCTION_URL ?? processEnv?.VERCEL_URL)
       : (processEnv?.VERCEL_URL ?? processEnv?.VERCEL_PROJECT_PRODUCTION_URL);
   if (vercelUrl) {
-    const origin = vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
+    const origin = vercelUrl.startsWith('http')
+      ? vercelUrl
+      : `https://${vercelUrl}`;
     return `${origin}${normalized}`;
   }
 
@@ -44,7 +46,7 @@ function createQueryClient() {
       onError: (error, query) => {
         toast.error(error.message, {
           action: {
-            label: "retry",
+            label: 'retry',
             onClick: () => {
               query.invalidate();
             },
@@ -63,7 +65,7 @@ const trpcClient = createTRPCClient<AppRouter>({
       fetch(url, options) {
         return fetch(url, {
           ...options,
-          credentials: "include",
+          credentials: 'include',
         });
       },
     }),
@@ -99,7 +101,7 @@ export const getRouter = () => {
   return router;
 };
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }

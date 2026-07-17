@@ -1,25 +1,29 @@
-import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@yapper/ui/components/button";
-import { Input } from "@yapper/ui/components/input";
-import { Label } from "@yapper/ui/components/label";
-import { toast } from "sonner";
-import z from "zod";
+import { useForm } from '@tanstack/react-form';
+import { useNavigate } from '@tanstack/react-router';
+import { Button } from '@yapper/ui/components/button';
+import { Input } from '@yapper/ui/components/input';
+import { Label } from '@yapper/ui/components/label';
+import { toast } from 'sonner';
+import z from 'zod';
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from '@/lib/auth-client';
 
-import Loader from "./loader";
+import Loader from './loader';
 
-export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
+export default function SignInForm({
+  onSwitchToSignUp,
+}: {
+  onSwitchToSignUp: () => void;
+}) {
   const navigate = useNavigate({
-    from: "/",
+    from: '/',
   });
   const { isPending } = authClient.useSession();
 
   const form = useForm({
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     },
     onSubmit: async ({ value }) => {
       await authClient.signIn.email(
@@ -30,9 +34,9 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         {
           onSuccess: () => {
             navigate({
-              to: "/dashboard",
+              to: '/dashboard',
             });
-            toast.success("Sign in successful");
+            toast.success('Sign in successful');
           },
           onError: (error) => {
             toast.error(error.error.message || error.error.statusText);
@@ -42,8 +46,8 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
     },
     validators: {
       onSubmit: z.object({
-        email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        email: z.email('Invalid email address'),
+        password: z.string().min(8, 'Password must be at least 8 characters'),
       }),
     },
   });
@@ -111,11 +115,18 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         </div>
 
         <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
+          selector={(state) => ({
+            canSubmit: state.canSubmit,
+            isSubmitting: state.isSubmitting,
+          })}
         >
           {({ canSubmit, isSubmitting }) => (
-            <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Sign In"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Sign In'}
             </Button>
           )}
         </form.Subscribe>

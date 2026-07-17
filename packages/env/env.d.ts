@@ -1,4 +1,4 @@
-import { type server } from "@yapper/infra/alchemy.run";
+import { type server } from '@yapper/infra/alchemy.run';
 
 // This file infers types for the cloudflare:workers environment from your Alchemy Worker.
 // @see https://alchemy.run/concepts/bindings/#type-safe-bindings
@@ -9,7 +9,7 @@ declare global {
   type Env = CloudflareEnv;
 }
 
-declare module "cloudflare:workers" {
+declare module 'cloudflare:workers' {
   namespace Cloudflare {
     export interface Env extends CloudflareEnv {}
   }

@@ -1,16 +1,16 @@
-import alchemy from "alchemy";
-import { Worker } from "alchemy/cloudflare";
-import { config } from "dotenv";
+import alchemy from 'alchemy';
+import { Worker } from 'alchemy/cloudflare';
+import { config } from 'dotenv';
 
-config({ path: "./.env" });
-config({ path: "../../apps/server/.env" });
+config({ path: './.env' });
+config({ path: '../../apps/server/.env' });
 
-const app = await alchemy("yapper");
+const app = await alchemy('yapper');
 
-export const server = await Worker("server", {
-  cwd: "../../apps/server",
-  entrypoint: "src/index.ts",
-  compatibility: "node",
+export const server = await Worker('server', {
+  cwd: '../../apps/server',
+  entrypoint: 'src/index.ts',
+  compatibility: 'node',
   url: true,
   bindings: {
     DATABASE_URL: alchemy.secret.env.DATABASE_URL!,

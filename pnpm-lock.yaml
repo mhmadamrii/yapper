@@ -84,6 +84,9 @@ importers:
       '@yapper/config':
         specifier: workspace:*
         version: link:packages/config
+      prettier:
+        specifier: ^3.9.5
+        version: 3.9.5
       tsx:
         specifier: ^4.22.5
         version: 4.23.1

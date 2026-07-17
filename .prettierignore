@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+.output/
+.vercel/
+.turbo/
+.wrangler/
+
+# Generated files
+**/routeTree.gen.ts
+**/*.gen.ts
+**/migrations/
+pnpm-lock.yaml
+
+# Misc
+coverage/
+.next/
+.cache/
+*.min.js
+*.min.css
+
+# Env
+.env
+.env.*

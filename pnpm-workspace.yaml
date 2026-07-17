@@ -9,10 +9,10 @@ catalog:
   dotenv: ^17.4.2
   zod: ^4.4.3
   typescript: ^6
-  "@types/node": ^22.13.14
-  "@cloudflare/workers-types": ^4.20260702.1
+  '@types/node': ^22.13.14
+  '@cloudflare/workers-types': ^4.20260702.1
   hono: ^4.12.27
-  "@trpc/server": ^11.18.0
+  '@trpc/server': ^11.18.0
   better-auth: 1.6.23
   alchemy: ^0.93.12
   lucide-react: ^1.23.0
@@ -21,6 +21,6 @@ catalog:
   react-dom: ^19.2.7
   sonner: ^2.0.7
   tailwindcss: ^4.3.2
-  "@trpc/client": ^11.18.0
-  "@types/react": ^19.2.17
-  "@types/react-dom": ^19.2.3
+  '@trpc/client': ^11.18.0
+  '@types/react': ^19.2.17
+  '@types/react-dom': ^19.2.3
