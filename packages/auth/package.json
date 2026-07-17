@@ -1,0 +1,24 @@
+{
+  "name": "@yapper/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@yapper/db": "workspace:*",
+    "@yapper/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@yapper/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

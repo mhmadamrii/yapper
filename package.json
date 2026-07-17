@@ -1,0 +1,44 @@
+{
+  "name": "yapper",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check-types": "turbo run check-types",
+    "dev:web": "turbo run dev -F web",
+    "dev:server": "turbo run dev -F server",
+    "db:push": "turbo run db:push -F @yapper/db",
+    "db:studio": "turbo run db:studio -F @yapper/db",
+    "db:generate": "turbo run db:generate -F @yapper/db",
+    "db:migrate": "turbo run db:migrate -F @yapper/db",
+    "deploy:server": "turbo run deploy -F @yapper/infra",
+    "destroy": "turbo run destroy -F @yapper/infra",
+    "deploy:setup": "vercel link",
+    "dev:vercel": "vercel dev -L",
+    "env:preview": "tsx scripts/sync-vercel-env.ts preview",
+    "env:production": "tsx scripts/sync-vercel-env.ts production",
+    "deploy:web": "vercel deploy",
+    "deploy:web:prod": "vercel deploy --prod",
+    "deploy:check": "vercel deploy --dry"
+  },
+  "dependencies": {
+    "@yapper/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@types/node": "catalog:",
+    "@yapper/config": "workspace:*",
+    "tsx": "^4.22.5",
+    "turbo": "^2.10.2",
+    "typescript": "catalog:",
+    "vercel": "^54.18.6"
+  },
+  "packageManager": "pnpm@10.8.0"
+}
