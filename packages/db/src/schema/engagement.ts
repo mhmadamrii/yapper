@@ -1,5 +1,11 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, index, primaryKey } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  timestamp,
+  index,
+  primaryKey,
+} from 'drizzle-orm/pg-core';
 import { user } from './auth';
 import { post } from './post';
 

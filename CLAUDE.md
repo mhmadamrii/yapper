@@ -1,6 +1,6 @@
 # Yapper
 
-Portfolio social media app in the spirit of X / Bluesky. The goal is not another CRUD clone: each feature should replicate a *hard problem the big platforms (X, Facebook, Instagram, Bluesky) already solved* and implement it properly at portfolio scale. Depth over breadth — a small number of features done "the real way" beats many shallow ones.
+Portfolio social media app in the spirit of X / Bluesky. The goal is not another CRUD clone: each feature should replicate a _hard problem the big platforms (X, Facebook, Instagram, Bluesky) already solved_ and implement it properly at portfolio scale. Depth over breadth — a small number of features done "the real way" beats many shallow ones.
 
 ## Problem areas to replicate (product roadmap)
 
@@ -22,17 +22,17 @@ Keep this list in mind when the user asks for a new feature — propose the "sol
 
 pnpm workspaces + Turborepo. Dependency versions are pinned in the `catalog:` section of `pnpm-workspace.yaml` — add shared deps there, reference with `"catalog:"`.
 
-| Path | Package | What it is |
-|---|---|---|
-| `apps/web` | `web` | TanStack Start (React 19, Vite 8, file-based routing), port 3001, deploys to Vercel |
-| `apps/server` | `server` | Hono app exposing tRPC + better-auth handlers, deploys to Cloudflare Workers |
-| `packages/api` | `@yapper/api` | tRPC init, context, and routers (`src/routers/`) |
-| `packages/auth` | `@yapper/auth` | better-auth setup (`createAuth()`) |
-| `packages/db` | `@yapper/db` | Drizzle ORM + Neon serverless Postgres; schema in `src/schema/`, `createDb()` factory |
-| `packages/env` | `@yapper/env` | t3-env validated env vars — import from `@yapper/env/server` or `@yapper/env/web`, never `process.env` directly |
-| `packages/ui` | `@yapper/ui` | Shared shadcn/base-ui components, Tailwind 4, `globals.css` |
-| `packages/infra` | `@yapper/infra` | Alchemy IaC for the Cloudflare side |
-| `packages/config` | `@yapper/config` | Shared tsconfig |
+| Path              | Package          | What it is                                                                                                      |
+| ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| `apps/web`        | `web`            | TanStack Start (React 19, Vite 8, file-based routing), port 3001, deploys to Vercel                             |
+| `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys to Cloudflare Workers                                    |
+| `packages/api`    | `@yapper/api`    | tRPC init, context, and routers (`src/routers/`)                                                                |
+| `packages/auth`   | `@yapper/auth`   | better-auth setup (`createAuth()`)                                                                              |
+| `packages/db`     | `@yapper/db`     | Drizzle ORM + Neon serverless Postgres; schema in `src/schema/`, `createDb()` factory                           |
+| `packages/env`    | `@yapper/env`    | t3-env validated env vars — import from `@yapper/env/server` or `@yapper/env/web`, never `process.env` directly |
+| `packages/ui`     | `@yapper/ui`     | Shared shadcn/base-ui components, Tailwind 4, `globals.css`                                                     |
+| `packages/infra`  | `@yapper/infra`  | Alchemy IaC for the Cloudflare side                                                                             |
+| `packages/config` | `@yapper/config` | Shared tsconfig                                                                                                 |
 
 ## Commands (run from repo root)
 
@@ -62,3 +62,8 @@ pnpm deploy:server   # Alchemy deploy to Cloudflare
 - **Auth**: better-auth; server mounts it at `/api/auth/*`; web client in `apps/web/src/lib/auth-client.ts`.
 - **Vite config gotcha**: `ssr.noExternal: true` must stay build-only (see `apps/web/vite.config.ts`) — enabling it in dev makes the module runner evaluate CJS deps as ESM and crash with `module is not defined`.
 - New workspace packages: `"type": "module"`, export raw TS from `src/` via the `exports` map (no build step for internal packages).
+
+## Claude workflow rules
+
+- Do NOT run smoke tests or start dev servers to verify changes — the user verifies manually.
+- After changing any code files, run prettier on them: `pnpm exec prettier --write <files>` from the repo root.

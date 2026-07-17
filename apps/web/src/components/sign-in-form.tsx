@@ -1,8 +1,13 @@
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
-import { Input } from '@yapper/ui/components/input';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@yapper/ui/components/input-group';
 import { Label } from '@yapper/ui/components/label';
+import { LockIcon, MailIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import z from 'zod';
 
@@ -57,8 +62,8 @@ export default function SignInForm({
   }
 
   return (
-    <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
+    <div className="w-full max-w-xl">
+      <h2 className="mb-8 text-2xl font-bold">Sign in</h2>
 
       <form
         onSubmit={(e) => {
@@ -66,81 +71,92 @@ export default function SignInForm({
           e.stopPropagation();
           form.handleSubmit();
         }}
-        className="space-y-4"
+        className="space-y-5"
       >
-        <div>
-          <form.Field name="email">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
-                <Input
+        <form.Field name="email">
+          {(field) => (
+            <div className="space-y-2">
+              <Label htmlFor={field.name}>Email</Label>
+              <InputGroup className="h-11">
+                <InputGroupAddon>
+                  <MailIcon />
+                </InputGroupAddon>
+                <InputGroupInput
                   id={field.name}
                   name={field.name}
                   type="email"
+                  placeholder="you@example.com"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
-        </div>
+              </InputGroup>
+              {field.state.meta.errors.map((error) => (
+                <p key={error?.message} className="text-destructive text-sm">
+                  {error?.message}
+                </p>
+              ))}
+            </div>
+          )}
+        </form.Field>
 
-        <div>
-          <form.Field name="password">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
-                <Input
+        <form.Field name="password">
+          {(field) => (
+            <div className="space-y-2">
+              <Label htmlFor={field.name}>Password</Label>
+              <InputGroup className="h-11">
+                <InputGroupAddon>
+                  <LockIcon />
+                </InputGroupAddon>
+                <InputGroupInput
                   id={field.name}
                   name={field.name}
                   type="password"
+                  placeholder="Your password"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
-        </div>
-
-        <form.Subscribe
-          selector={(state) => ({
-            canSubmit: state.canSubmit,
-            isSubmitting: state.isSubmitting,
-          })}
-        >
-          {({ canSubmit, isSubmitting }) => (
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={!canSubmit || isSubmitting}
-            >
-              {isSubmitting ? 'Submitting...' : 'Sign In'}
-            </Button>
+              </InputGroup>
+              {field.state.meta.errors.map((error) => (
+                <p key={error?.message} className="text-destructive text-sm">
+                  {error?.message}
+                </p>
+              ))}
+            </div>
           )}
-        </form.Subscribe>
-      </form>
+        </form.Field>
 
-      <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignUp}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Need an account? Sign Up
-        </Button>
-      </div>
+        <div className="flex items-center justify-between border-b pb-8">
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            className="rounded-full"
+            onClick={onSwitchToSignUp}
+          >
+            Create account
+          </Button>
+
+          <form.Subscribe
+            selector={(state) => ({
+              canSubmit: state.canSubmit,
+              isSubmitting: state.isSubmitting,
+            })}
+          >
+            {({ canSubmit, isSubmitting }) => (
+              <Button
+                type="submit"
+                size="lg"
+                className="rounded-full"
+                disabled={!canSubmit || isSubmitting}
+              >
+                {isSubmitting ? 'Signing in...' : 'Sign in'}
+              </Button>
+            )}
+          </form.Subscribe>
+        </div>
+      </form>
     </div>
   );
 }
