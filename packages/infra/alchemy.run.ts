@@ -17,6 +17,8 @@ export const server = await Worker('server', {
     CORS_ORIGIN: alchemy.env.CORS_ORIGIN!,
     BETTER_AUTH_SECRET: alchemy.secret.env.BETTER_AUTH_SECRET!,
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
+    IMAGEKIT_PUBLIC_KEY: alchemy.env.IMAGEKIT_PUBLIC_KEY!,
+    IMAGEKIT_PRIVATE_KEY: alchemy.secret.env.IMAGEKIT_PRIVATE_KEY!,
   },
   dev: {
     port: 3000,

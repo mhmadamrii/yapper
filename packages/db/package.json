@@ -19,7 +19,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@yapper/env": "workspace:*",
     "dotenv": "catalog:",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

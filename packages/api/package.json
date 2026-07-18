@@ -15,6 +15,7 @@
     "@trpc/server": "catalog:",
     "@yapper/auth": "workspace:*",
     "@yapper/db": "workspace:*",
+    "drizzle-orm": "catalog:",
     "@yapper/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"

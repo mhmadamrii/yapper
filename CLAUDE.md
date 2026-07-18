@@ -59,6 +59,7 @@ pnpm deploy:server   # Alchemy deploy to Cloudflare
 - **DB**: one schema file per domain in `packages/db/src/schema/`, re-exported from `schema/index.ts`. Get a client via `createDb()` (per-request, Neon HTTP driver — no long-lived pool).
 - **Web routes**: file-based under `apps/web/src/routes/`. `routeTree.gen.ts` is generated — never edit it by hand. Authed routes live under `routes/_auth/`.
 - **Data fetching (web)**: tRPC client via `apps/web/src/utils/trpc.ts` + TanStack Query.
+- **Conditional rendering (web)**: use the SolidJS-style components from `apps/web/src/components/control-flow.tsx` — `<Show when={...}>` (callback child narrows the value), `<Switch>`/`<Match>` for if-else chains (first truthy `Match` wins), `<For each={...}>` for lists (set `key` inside the callback). Prefer these over `&&`, nested ternaries, and bare `.map()` in JSX.
 - **Auth**: better-auth; server mounts it at `/api/auth/*`; web client in `apps/web/src/lib/auth-client.ts`.
 - **Vite config gotcha**: `ssr.noExternal: true` must stay build-only (see `apps/web/vite.config.ts`) — enabling it in dev makes the module runner evaluate CJS deps as ESM and crash with `module is not defined`.
 - New workspace packages: `"type": "module"`, export raw TS from `src/` via the `exports` map (no build step for internal packages).
