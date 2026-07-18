@@ -1,17 +1,18 @@
+import z from 'zod';
+
 import { useForm } from '@tanstack/react-form';
+import { authClient } from '@/lib/auth-client';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
+import { Label } from '@yapper/ui/components/label';
+import { LockIcon, MailIcon } from 'lucide-react';
+import { toast } from 'sonner';
+
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from '@yapper/ui/components/input-group';
-import { Label } from '@yapper/ui/components/label';
-import { LockIcon, MailIcon } from 'lucide-react';
-import { toast } from 'sonner';
-import z from 'zod';
-
-import { authClient } from '@/lib/auth-client';
 
 import Loader from './loader';
 
@@ -62,7 +63,7 @@ export default function SignInForm({
   }
 
   return (
-    <div className="w-full max-w-xl">
+    <div className="w-full max-w-xl border border-red-500">
       <h2 className="mb-8 text-2xl font-bold">Sign in</h2>
 
       <form

@@ -1,5 +1,3 @@
-import Header from '../components/header';
-
 import type { QueryClient } from '@tanstack/react-query';
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import type { AppRouter } from '@yapper/api/routers/index';
@@ -52,8 +50,7 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <div className="grid h-svh grid-rows-[auto_1fr]">
-          <Header />
+        <div className="grid h-svh grid-rows-[1fr]">
           <Outlet />
         </div>
         <Toaster richColors />

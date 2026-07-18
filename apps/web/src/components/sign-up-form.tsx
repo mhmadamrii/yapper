@@ -1,28 +1,26 @@
+import z from 'zod';
+
+import { Label } from '@yapper/ui/components/label';
+import { authClient } from '@/lib/auth-client';
+import { LockIcon, MailIcon, UserIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
+
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from '@yapper/ui/components/input-group';
-import { Label } from '@yapper/ui/components/label';
-import { LockIcon, MailIcon, UserIcon } from 'lucide-react';
-import { toast } from 'sonner';
-import z from 'zod';
-
-import { authClient } from '@/lib/auth-client';
 
 import Loader from './loader';
 
-export default function SignUpForm({
-  onSwitchToSignIn,
-}: {
-  onSwitchToSignIn: () => void;
-}) {
+export function SignUpForm() {
   const navigate = useNavigate({
     from: '/',
   });
+
   const { isPending } = authClient.useSession();
 
   const form = useForm({
@@ -41,7 +39,7 @@ export default function SignUpForm({
         {
           onSuccess: () => {
             navigate({
-              to: '/dashboard',
+              to: '/',
             });
             toast.success('Sign up successful');
           },
@@ -168,9 +166,9 @@ export default function SignUpForm({
             variant="secondary"
             size="lg"
             className="rounded-full"
-            onClick={onSwitchToSignIn}
+            onClick={() => navigate({ to: '/' })}
           >
-            Sign in instead
+            Back
           </Button>
 
           <form.Subscribe
