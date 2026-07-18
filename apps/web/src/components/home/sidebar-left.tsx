@@ -1,6 +1,9 @@
 import { Link } from '@tanstack/react-router';
+import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
+import { authClient } from '@/lib/auth-client';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
+
 import {
   Bell,
   Bird,
@@ -16,9 +19,6 @@ import {
   Settings,
   User,
 } from 'lucide-react';
-
-import { authClient } from '@/lib/auth-client';
-import DialogSignIn from '@/routes/-components/dialog-sign-in';
 
 const navItems = [
   { label: 'Home', icon: Home, to: '/' },
@@ -36,8 +36,8 @@ export function SidebarLeft() {
   const { data: session, isPending } = authClient.useSession();
 
   return (
-    <aside className="sticky top-0 hidden h-svh flex-col items-end px-6 py-6 md:flex">
-      <div className="flex w-52 flex-col gap-1">
+    <aside className="sticky top-0 hidden h-svh flex-col items-end px-6 py-6 md:flex border border-red-500">
+      <div className="flex w-64 flex-col gap-1">
         {isPending ? (
           <SidebarSkeleton />
         ) : session ? (

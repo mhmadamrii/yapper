@@ -1,6 +1,5 @@
 import { Input } from '@yapper/ui/components/input';
 import { Compass, ListFilter, Plus, Search, TrendingUp } from 'lucide-react';
-
 import { trendingTopics } from './dummy-posts';
 import { authClient } from '@/lib/auth-client';
 
@@ -8,7 +7,7 @@ export function SidebarRight() {
   const { data: session } = authClient.useSession();
 
   return (
-    <aside className="sticky top-0 hidden h-svh w-80 flex-col gap-5 px-6 py-6 lg:flex">
+    <aside className="sticky top-0 hidden h-svh w-80 flex-col gap-5 px-6 py-6 lg:flex border border-red-500">
       <div className="relative">
         <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input placeholder="Search" className="rounded-full pl-9" />

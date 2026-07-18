@@ -24,11 +24,7 @@ import {
   InputGroupInput,
 } from '@yapper/ui/components/input-group';
 
-export default function DialogSignIn({
-  onSwitchToSignUp,
-}: {
-  onSwitchToSignUp?: () => void;
-}) {
+export function DialogSignIn() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate({
     from: '/',
