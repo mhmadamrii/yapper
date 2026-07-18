@@ -4,6 +4,7 @@ import { Bird, Hash, ImageIcon } from 'lucide-react';
 import { dummyPosts } from './dummy-posts';
 import { PostCard } from './post-card';
 import { authClient } from '@/lib/auth-client';
+import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 
 export function Feed() {
   const { data: session } = authClient.useSession();
@@ -42,17 +43,21 @@ export function Feed() {
       </header>
 
       {session && (
-        <div className="border-border flex items-center gap-3 border-b px-4 py-3">
-          <img
-            src={session.user.image ?? '/prabowo.jpg'}
-            alt={session.user.name}
-            className="size-10 rounded-full object-cover"
-          />
-          <span className="text-muted-foreground flex-1 text-lg">
-            What's up?
-          </span>
-          <ImageIcon className="text-muted-foreground size-5" />
-        </div>
+        <DialogCreatePost
+          trigger={
+            <button className="border-border hover:bg-accent/30 flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors">
+              <img
+                src={session.user.image ?? '/prabowo.jpg'}
+                alt={session.user.name}
+                className="size-10 rounded-full object-cover"
+              />
+              <span className="text-muted-foreground flex-1 text-lg">
+                What's up?
+              </span>
+              <ImageIcon className="text-muted-foreground size-5" />
+            </button>
+          }
+        />
       )}
 
       <div>

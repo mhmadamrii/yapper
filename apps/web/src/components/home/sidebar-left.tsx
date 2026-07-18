@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@yapper/ui/components/button';
@@ -77,10 +78,14 @@ function LoggedInNav({ name, image }: { name: string; image: string }) {
         </Link>
       ))}
 
-      <Button size="lg" className="mt-4 w-fit rounded-full px-8">
-        <PenSquare />
-        New post
-      </Button>
+      <DialogCreatePost
+        trigger={
+          <Button size="lg" className="mt-4 w-fit rounded-full px-8">
+            <PenSquare />
+            New post
+          </Button>
+        }
+      />
     </nav>
   );
 }

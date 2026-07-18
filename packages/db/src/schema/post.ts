@@ -47,6 +47,34 @@ export const post = pgTable(
   ],
 );
 
+export const postMedia = pgTable(
+  'post_media',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    postId: text('post_id')
+      .notNull()
+      .references(() => post.id, { onDelete: 'cascade' }),
+    // ImageKit identifiers: filePath drives render-time URL transformations
+    // (no variant URLs stored), fileId is needed for deletion via their API.
+    fileId: text('file_id').notNull(),
+    filePath: text('file_path').notNull(),
+    // Intrinsic dimensions let the client reserve layout space before the
+    // image loads (no CLS).
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    format: text('format').notNull(),
+    bytes: integer('bytes').notNull(),
+    altText: text('alt_text'),
+    position: integer('position').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('post_media_post_position_idx').on(table.postId, table.position),
+  ],
+);
+
 export const postRelations = relations(post, ({ one, many }) => ({
   author: one(user, {
     fields: [post.authorId],
@@ -58,4 +86,12 @@ export const postRelations = relations(post, ({ one, many }) => ({
     relationName: 'replies',
   }),
   replies: many(post, { relationName: 'replies' }),
+  media: many(postMedia),
+}));
+
+export const postMediaRelations = relations(postMedia, ({ one }) => ({
+  post: one(post, {
+    fields: [postMedia.postId],
+    references: [post.id],
+  }),
 }));
