@@ -8,6 +8,13 @@
       "when": 1784314701728,
       "tag": "0000_bent_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784356248657,
+      "tag": "0001_cool_champions",
+      "breakpoints": true
     }
   ]
 }

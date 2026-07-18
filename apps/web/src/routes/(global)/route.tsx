@@ -8,5 +8,6 @@ export const Route = createFileRoute('/(global)')({
 function RouteComponent() {
   const { data } = authClient.useSession();
   console.log('current user', data);
+
   return <Outlet />;
 }

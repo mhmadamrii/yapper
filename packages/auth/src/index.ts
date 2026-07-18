@@ -3,6 +3,7 @@ import * as schema from '@yapper/db/schema/auth';
 import { env } from '@yapper/env/server';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { username } from 'better-auth/plugins';
 
 export function createAuth() {
   const db = createDb();
@@ -17,6 +18,13 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
     },
+    plugins: [
+      username({
+        minUsernameLength: 3,
+        // 20-char username + '.yapper' suffix
+        maxUsernameLength: 27,
+      }),
+    ],
     // uncomment cookieCache setting when ready to deploy to Cloudflare using *.workers.dev domains
     // session: {
     //   cookieCache: {
