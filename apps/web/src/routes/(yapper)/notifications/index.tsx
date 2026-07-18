@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/saved/')({
+export const Route = createFileRoute('/(yapper)/notifications/')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  return <div>Hello "/saved/"!</div>
+  return <div>Hello "/notifications/"!</div>
 }
