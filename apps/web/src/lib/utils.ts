@@ -18,6 +18,25 @@ export function formatCount(n: number) {
  * Accepts a `Date` or anything `new Date()` parses (e.g. the ISO strings
  * tRPC serializes dates to). Future timestamps clamp to `0s`.
  */
+/**
+ * Formats a timestamp for a post detail view, X/Bluesky style:
+ * `7:41 AM · Jul 17, 2026`. Accepts a `Date` or anything `new Date()`
+ * parses (e.g. the ISO strings tRPC serializes dates to).
+ */
+export function formatPostTimestamp(date: string | number | Date) {
+  const d = new Date(date);
+  const time = d.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const day = d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `${time} · ${day}`;
+}
+
 export function timeAgo(date: string | number | Date) {
   const seconds = Math.max(
     0,

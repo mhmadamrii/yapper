@@ -37,8 +37,8 @@ export function SidebarLeft() {
   const { data: session, isPending } = authClient.useSession();
 
   return (
-    <aside className="sticky top-0 hidden h-svh flex-col items-end px-6 py-6 md:flex border border-red-500">
-      <div className="flex w-64 flex-col gap-1">
+    <aside className="sticky top-0 hidden h-svh flex-col items-end px-6 py-6 md:flex">
+      <div className="flex w-50 flex-col gap-1">
         {isPending ? (
           <SidebarSkeleton />
         ) : session ? (

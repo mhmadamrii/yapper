@@ -1,5 +1,7 @@
 import { imageKitUrl } from '@/lib/imagekit';
+import { useSetLike } from '@/lib/use-set-like';
 import { formatCount, timeAgo } from '@/lib/utils';
+import { useNavigate } from '@tanstack/react-router';
 import {
   Bookmark,
   Ellipsis,
@@ -16,10 +18,17 @@ export type PostListItem =
   inferRouterOutputs<AppRouter>['post']['list']['items'][number];
 
 export function PostCard({ post }: { post: PostListItem }) {
+  const navigate = useNavigate();
+  const setLike = useSetLike();
   const handle = post.author.username ?? 'unknown';
 
   return (
-    <article className="border-border hover:bg-accent/30 border-b px-4 py-3 transition-colors">
+    <article
+      onClick={() =>
+        navigate({ to: '/post/$postId', params: { postId: post.id } })
+      }
+      className="border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors"
+    >
       <div className="flex gap-3">
         <img
           src={post.author.image ?? '/prabowo.jpg'}
@@ -71,8 +80,19 @@ export function PostCard({ post }: { post: PostListItem }) {
               <Repeat2 className="size-4" />
               {formatCount(post.repostCount)}
             </button>
-            <button className="flex items-center gap-1.5 transition-colors hover:text-red-500">
-              <Heart className="size-4" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLike(post.id, !post.likedByMe);
+              }}
+              className={`flex items-center gap-1.5 transition-colors hover:text-red-500 ${
+                post.likedByMe ? 'text-red-500' : ''
+              }`}
+            >
+              <Heart
+                className="size-4"
+                fill={post.likedByMe ? 'currentColor' : 'none'}
+              />
               {formatCount(post.likeCount)}
             </button>
             <button className="hover:text-foreground transition-colors">
