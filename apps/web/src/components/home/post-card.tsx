@@ -1,5 +1,7 @@
 import { imageKitUrl } from '@/lib/imagekit';
 import { useSetLike } from '@/lib/use-set-like';
+import { useSetSave } from '@/lib/use-set-save';
+import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { formatCount, timeAgo } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -20,6 +22,7 @@ export type PostListItem =
 export function PostCard({ post }: { post: PostListItem }) {
   const navigate = useNavigate();
   const setLike = useSetLike();
+  const setSave = useSetSave();
   const handle = post.author.username ?? 'unknown';
 
   return (
@@ -30,11 +33,22 @@ export function PostCard({ post }: { post: PostListItem }) {
       className="border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors"
     >
       <div className="flex gap-3">
-        <img
-          src={post.author.image ?? '/prabowo.jpg'}
-          alt={post.author.name}
-          className="size-10 shrink-0 rounded-full object-cover"
-        />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate({
+              to: '/profile/$userId',
+              params: { userId: post.author.id },
+            });
+          }}
+          className="h-fit shrink-0"
+        >
+          <img
+            src={post.author.image ?? '/prabowo.jpg'}
+            alt={post.author.name}
+            className="size-10 rounded-full object-cover"
+          />
+        </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1 text-sm">
@@ -72,10 +86,18 @@ export function PostCard({ post }: { post: PostListItem }) {
           )}
 
           <div className="text-muted-foreground mt-3 flex items-center justify-between pr-8 text-sm">
-            <button className="hover:text-foreground flex items-center gap-1.5 transition-colors">
-              <MessageCircle className="size-4" />
-              {formatCount(post.replyCount)}
-            </button>
+            <DialogCreateReply
+              post={post}
+              trigger={
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-foreground flex items-center gap-1.5 transition-colors"
+                >
+                  <MessageCircle className="size-4" />
+                  {formatCount(post.replyCount)}
+                </button>
+              }
+            />
             <button className="flex items-center gap-1.5 transition-colors hover:text-green-500">
               <Repeat2 className="size-4" />
               {formatCount(post.repostCount)}
@@ -95,8 +117,19 @@ export function PostCard({ post }: { post: PostListItem }) {
               />
               {formatCount(post.likeCount)}
             </button>
-            <button className="hover:text-foreground transition-colors">
-              <Bookmark className="size-4" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSave(post.id, !post.savedByMe);
+              }}
+              className={`hover:text-foreground transition-colors ${
+                post.savedByMe ? 'text-primary' : ''
+              }`}
+            >
+              <Bookmark
+                className="size-4"
+                fill={post.savedByMe ? 'currentColor' : 'none'}
+              />
             </button>
             <button className="hover:text-foreground transition-colors">
               <Share className="size-4" />

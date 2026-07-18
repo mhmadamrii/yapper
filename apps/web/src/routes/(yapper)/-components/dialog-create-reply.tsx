@@ -1,18 +1,14 @@
 import { authClient } from '@/lib/auth-client';
-import { uploadToImageKit } from '@/lib/imagekit';
+import { imageKitUrl, uploadToImageKit } from '@/lib/imagekit';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import {
-  ChevronDown,
-  Globe,
-  ImageIcon,
-  ImagePlay,
-  Smile,
-  X,
-} from 'lucide-react';
+import { ImageIcon, ImagePlay, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+
+import { For, Show } from '@/components/control-flow';
+import { CharProgress } from './dialog-create-post';
 
 import {
   Dialog,
@@ -29,7 +25,30 @@ interface PendingImage {
   previewUrl: string;
 }
 
-export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
+// Structural subset of both `post.list` items and `post.byId` output, so
+// either can be passed as the reply target.
+export interface ReplyTarget {
+  id: string;
+  content: string;
+  author: {
+    name: string;
+    username: string | null;
+    image: string | null;
+  };
+  media: Array<{
+    id: string;
+    filePath: string;
+    altText: string | null;
+  }>;
+}
+
+export function DialogCreateReply({
+  post,
+  trigger,
+}: {
+  post: ReplyTarget;
+  trigger: React.ReactElement;
+}) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [images, setImages] = useState<PendingImage[]>([]);
@@ -41,10 +60,10 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
   const queryClient = useQueryClient();
 
   const uploadAuth = useMutation(trpc.media.uploadAuth.mutationOptions());
-  const createPost = useMutation(trpc.post.create.mutationOptions());
+  const createReply = useMutation(trpc.post.create.mutationOptions());
 
   const remaining = MAX_POST_LENGTH - text.length;
-  const canPost =
+  const canReply =
     !isPosting &&
     remaining >= 0 &&
     (text.trim().length > 0 || images.length > 0);
@@ -72,7 +91,7 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
     setImages((prev) => {
       const merged = [...prev, ...next];
       if (merged.length > MAX_IMAGES) {
-        toast.error(`Up to ${MAX_IMAGES} images per post`);
+        toast.error(`Up to ${MAX_IMAGES} images per reply`);
       }
       return merged.slice(0, MAX_IMAGES);
     });
@@ -86,7 +105,7 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
     });
   };
 
-  const handlePost = async () => {
+  const handleReply = async () => {
     setIsPosting(true);
     try {
       const media = [];
@@ -106,16 +125,18 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
         });
       }
 
-      await createPost.mutateAsync({ content: text.trim(), media });
-      await queryClient.invalidateQueries({
-        queryKey: trpc.post.list.infiniteQueryKey(),
+      await createReply.mutateAsync({
+        content: text.trim(),
+        media,
+        replyToPostId: post.id,
       });
+      await queryClient.invalidateQueries({ queryKey: trpc.post.pathKey() });
 
-      toast.success('Post created');
+      toast.success('Reply sent');
       reset();
       setOpen(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to post');
+      toast.error(error instanceof Error ? error.message : 'Failed to reply');
     } finally {
       setIsPosting(false);
     }
@@ -145,21 +166,37 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
           >
             Cancel
           </Button>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" className="text-primary text-base">
-              Drafts
-            </Button>
-            <Button
-              className="rounded-full px-6"
-              disabled={!canPost}
-              onClick={handlePost}
-            >
-              {isPosting ? 'Posting...' : 'Post'}
-            </Button>
-          </div>
+          <Button
+            className="rounded-full px-6"
+            disabled={!canReply}
+            onClick={handleReply}
+          >
+            {isPosting ? 'Replying...' : 'Reply'}
+          </Button>
         </div>
 
-        <div className="flex gap-3 px-4 pb-4">
+        <div className="border-border flex gap-3 border-b px-4 pb-4">
+          <img
+            src={post.author.image ?? '/prabowo.jpg'}
+            alt={post.author.name}
+            className="size-11 shrink-0 rounded-full object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">{post.author.name}</p>
+            <p className="line-clamp-3 text-[15px]">{post.content}</p>
+          </div>
+          <Show when={post.media[0]}>
+            {(m) => (
+              <img
+                src={imageKitUrl(m.filePath, 'w-200,f-auto,q-auto')}
+                alt={m.altText ?? ''}
+                className="border-border size-20 shrink-0 rounded-lg border object-cover"
+              />
+            )}
+          </Show>
+        </div>
+
+        <div className="flex gap-3 px-4 py-4">
           <img
             src={session?.user.image ?? '/prabowo.jpg'}
             alt={session?.user.name ?? 'You'}
@@ -170,39 +207,33 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
               autoFocus
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="What's up?"
-              rows={images.length > 0 ? 4 : 8}
+              placeholder="Write your reply"
+              rows={images.length > 0 ? 3 : 6}
               className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
             />
 
-            {images.length > 0 && (
+            <Show when={images.length > 0}>
               <div className="grid grid-cols-2 gap-2">
-                {images.map((img, i) => (
-                  <div key={img.previewUrl} className="relative">
-                    <img
-                      src={img.previewUrl}
-                      alt=""
-                      className="border-border h-36 w-full rounded-lg border object-cover"
-                    />
-                    <button
-                      onClick={() => removeImage(i)}
-                      className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                ))}
+                <For each={images}>
+                  {(img, i) => (
+                    <div key={img.previewUrl} className="relative">
+                      <img
+                        src={img.previewUrl}
+                        alt=""
+                        className="border-border h-36 w-full rounded-lg border object-cover"
+                      />
+                      <button
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  )}
+                </For>
               </div>
-            )}
+            </Show>
           </div>
-        </div>
-
-        <div className="px-4 pb-3">
-          <button className="bg-secondary text-secondary-foreground hover:bg-accent flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors">
-            <Globe className="size-4" />
-            Anyone can interact
-            <ChevronDown className="size-4" />
-          </button>
         </div>
 
         <div className="border-border flex items-center justify-between border-t px-4 py-3">
@@ -252,36 +283,5 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function CharProgress({ used, max }: { used: number; max: number }) {
-  const radius = 10;
-  const circumference = 2 * Math.PI * radius;
-  const fraction = Math.min(used / max, 1);
-  const over = used > max;
-
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" className="-rotate-90">
-      <circle
-        cx="14"
-        cy="14"
-        r={radius}
-        fill="none"
-        strokeWidth="3"
-        className="stroke-border"
-      />
-      <circle
-        cx="14"
-        cy="14"
-        r={radius}
-        fill="none"
-        strokeWidth="3"
-        strokeDasharray={circumference}
-        strokeDashoffset={circumference * (1 - fraction)}
-        strokeLinecap="round"
-        className={over ? 'stroke-destructive' : 'stroke-primary'}
-      />
-    </svg>
   );
 }

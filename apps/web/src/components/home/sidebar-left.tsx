@@ -1,21 +1,33 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
 import { authClient } from '@/lib/auth-client';
+import { ScrollToTop } from '@/components/scroll-to-top';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@yapper/ui/components/dropdown-menu';
 
 import {
   Bell,
   Bird,
   Bookmark,
   ChevronDown,
+  CircleUserRound,
+  Ellipsis,
   Globe,
   Hash,
   Home,
   List,
+  LogOut,
   MessageCircle,
   PenSquare,
+  Plus,
   Search,
   Settings,
   User,
@@ -42,28 +54,83 @@ export function SidebarLeft() {
         {isPending ? (
           <SidebarSkeleton />
         ) : session ? (
-          <LoggedInNav
-            name={session.user.name}
-            image={session.user.image ?? '/prabowo.jpg'}
-          />
+          <LoggedInNav user={session.user} />
         ) : (
           <LoggedOutPanel />
         )}
+      </div>
+      <div className="mt-auto">
+        <ScrollToTop />
       </div>
     </aside>
   );
 }
 
-function LoggedInNav({ name, image }: { name: string; image: string }) {
+interface AccountUser {
+  id: string;
+  name: string;
+  image?: string | null;
+  username?: string | null;
+}
+
+function AccountChip({ user }: { user: AccountUser }) {
+  const navigate = useNavigate();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button className="group hover:bg-accent aria-expanded:bg-accent mb-4 flex w-fit max-w-full items-center gap-2.5 rounded-full p-1 transition-colors hover:pr-3 aria-expanded:pr-3" />
+        }
+      >
+        <img
+          src={user.image ?? '/prabowo.jpg'}
+          alt={user.name}
+          className="size-12 shrink-0 rounded-full object-cover"
+        />
+        <span className="hidden min-w-0 flex-col text-left group-hover:flex group-aria-expanded:flex">
+          <span className="truncate text-sm font-bold">{user.name}</span>
+          <span className="text-muted-foreground truncate text-xs">
+            @{user.username ?? 'unknown'}
+          </span>
+        </span>
+        <Ellipsis className="text-muted-foreground hidden size-4 shrink-0 group-hover:block group-aria-expanded:block" />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="start" className="bg-card w-56">
+        <DropdownMenuItem
+          onClick={() =>
+            navigate({ to: '/profile/$userId', params: { userId: user.id } })
+          }
+        >
+          <CircleUserRound />
+          Go to profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate({ to: '/auth' })}>
+          <Plus />
+          Add another account
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() =>
+            authClient.signOut({
+              fetchOptions: {
+                onSuccess: () => navigate({ to: '/' }),
+              },
+            })
+          }
+        >
+          <LogOut />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function LoggedInNav({ user }: { user: AccountUser }) {
   return (
     <nav className="flex flex-col gap-1">
-      <Link to="/profile" className="mb-4 w-fit">
-        <img
-          src={image}
-          alt={name}
-          className="size-12 rounded-full object-cover"
-        />
-      </Link>
+      <AccountChip user={user} />
 
       {navItems.map(({ label, icon: Icon, to }) => (
         <Link

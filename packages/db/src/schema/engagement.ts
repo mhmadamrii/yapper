@@ -51,6 +51,36 @@ export const repost = pgTable(
   ],
 );
 
+export const save = pgTable(
+  'save',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    postId: text('post_id')
+      .notNull()
+      .references(() => post.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.postId] }),
+    // Saved posts surface on the profile "Saved" tab, keyset-paged by
+    // save time.
+    index('save_user_created_idx').on(table.userId, table.createdAt.desc()),
+  ],
+);
+
+export const saveRelations = relations(save, ({ one }) => ({
+  user: one(user, {
+    fields: [save.userId],
+    references: [user.id],
+  }),
+  post: one(post, {
+    fields: [save.postId],
+    references: [post.id],
+  }),
+}));
+
 export const likeRelations = relations(like, ({ one }) => ({
   user: one(user, {
     fields: [like.userId],

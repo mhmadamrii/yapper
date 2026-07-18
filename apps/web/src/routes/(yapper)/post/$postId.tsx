@@ -5,8 +5,10 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { imageKitUrl } from '@/lib/imagekit';
 import { useSetLike } from '@/lib/use-set-like';
+import { useSetSave } from '@/lib/use-set-save';
 import { formatCount, formatPostTimestamp } from '@/lib/utils';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
+import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { ReplyComposer } from '@/routes/(yapper)/-components/reply-composer';
 import { useTRPC } from '@/utils/trpc';
 import { useState } from 'react';
@@ -139,6 +141,7 @@ function PostDetailPage() {
 
 function PostDetail({ post }: { post: PostById }) {
   const setLike = useSetLike();
+  const setSave = useSetSave();
   const handle = post.author.username ?? 'unknown';
 
   return (
@@ -206,10 +209,15 @@ function PostDetail({ post }: { post: PostById }) {
       </Show>
 
       <div className="text-muted-foreground mt-3 flex items-center justify-between pr-8 text-sm">
-        <button className="hover:text-foreground flex items-center gap-1.5 transition-colors">
-          <MessageCircle className="size-5" />
-          {formatCount(post.replyCount)}
-        </button>
+        <DialogCreateReply
+          post={post}
+          trigger={
+            <button className="hover:text-foreground flex items-center gap-1.5 transition-colors">
+              <MessageCircle className="size-5" />
+              {formatCount(post.replyCount)}
+            </button>
+          }
+        />
         <button className="flex items-center gap-1.5 transition-colors hover:text-green-500">
           <Repeat2 className="size-5" />
           {formatCount(post.repostCount)}
@@ -226,8 +234,16 @@ function PostDetail({ post }: { post: PostById }) {
           />
           {formatCount(post.likeCount)}
         </button>
-        <button className="hover:text-foreground transition-colors">
-          <Bookmark className="size-5" />
+        <button
+          onClick={() => setSave(post.id, !post.savedByMe)}
+          className={`hover:text-foreground transition-colors ${
+            post.savedByMe ? 'text-primary' : ''
+          }`}
+        >
+          <Bookmark
+            className="size-5"
+            fill={post.savedByMe ? 'currentColor' : 'none'}
+          />
         </button>
         <button className="hover:text-foreground transition-colors">
           <Share className="size-5" />

@@ -1,8 +1,19 @@
-import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
-import { like } from '@yapper/db/schema/engagement';
+import { like, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
+import { userStats } from '@yapper/db/schema/social';
 import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
@@ -16,18 +27,30 @@ const mediaInput = z.object({
   altText: z.string().max(1000).optional(),
 });
 
-// One IN-query per page for the viewer's likes — never a per-post lookup.
-async function likedPostIds(
+// One IN-query each per page for the viewer's likes/saves — never a
+// per-post lookup.
+async function viewerEngagement(
   db: ReturnType<typeof createDb>,
   userId: string | undefined,
   postIds: string[],
 ) {
-  if (!userId || postIds.length === 0) return new Set<string>();
-  const rows = await db
-    .select({ postId: like.postId })
-    .from(like)
-    .where(and(eq(like.userId, userId), inArray(like.postId, postIds)));
-  return new Set(rows.map((row) => row.postId));
+  if (!userId || postIds.length === 0) {
+    return { liked: new Set<string>(), saved: new Set<string>() };
+  }
+  const [likeRows, saveRows] = await Promise.all([
+    db
+      .select({ postId: like.postId })
+      .from(like)
+      .where(and(eq(like.userId, userId), inArray(like.postId, postIds))),
+    db
+      .select({ postId: save.postId })
+      .from(save)
+      .where(and(eq(save.userId, userId), inArray(save.postId, postIds))),
+  ]);
+  return {
+    liked: new Set(likeRows.map((row) => row.postId)),
+    saved: new Set(saveRows.map((row) => row.postId)),
+  };
 }
 
 export const postRouter = router({
@@ -86,14 +109,15 @@ export const postRouter = router({
         };
       }
 
-      const liked = await likedPostIds(
+      const engagement = await viewerEngagement(
         db,
         ctx.session?.user.id,
         rows.map((row) => row.id),
       );
       const items = rows.map((row) => ({
         ...row,
-        likedByMe: liked.has(row.id),
+        likedByMe: engagement.liked.has(row.id),
+        savedByMe: engagement.saved.has(row.id),
       }));
 
       return { items, nextCursor };
@@ -153,17 +177,19 @@ export const postRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
       }
 
-      const liked = await likedPostIds(db, ctx.session?.user.id, [
+      const engagement = await viewerEngagement(db, ctx.session?.user.id, [
         found.id,
         ...found.replies.map((reply) => reply.id),
       ]);
 
       return {
         ...found,
-        likedByMe: liked.has(found.id),
+        likedByMe: engagement.liked.has(found.id),
+        savedByMe: engagement.saved.has(found.id),
         replies: found.replies.map((reply) => ({
           ...reply,
-          likedByMe: liked.has(reply.id),
+          likedByMe: engagement.liked.has(reply.id),
+          savedByMe: engagement.saved.has(reply.id),
         })),
       };
     }),
@@ -217,14 +243,178 @@ export const postRouter = router({
             .where(eq(post.id, input.replyToPostId)),
         );
       }
+      // Denormalized per-user post count; stats row created lazily.
+      extras.push(
+        db
+          .insert(userStats)
+          .values({ userId: ctx.session.user.id, postCount: 1 })
+          .onConflictDoUpdate({
+            target: userStats.userId,
+            set: { postCount: sql`${userStats.postCount} + 1` },
+          }),
+      );
 
-      if (extras.length > 0) {
-        await db.batch([statements[0], ...extras]);
-      } else {
-        await statements[0];
-      }
+      await db.batch([statements[0], ...extras]);
 
       return { id: postId };
+    }),
+
+  byUser: publicProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        tab: z.enum(['posts', 'replies', 'likes', 'saved']).default('posts'),
+        limit: z.number().int().min(1).max(50).default(20),
+        // Keyset cursor. For posts/replies: (post.createdAt, post.id).
+        // For likes/saved: (engagement.createdAt, postId).
+        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const { userId, tab, limit, cursor } = input;
+
+      let rows: Awaited<ReturnType<typeof fetchAuthored>>;
+      let nextCursor: { createdAt: string; id: string } | null = null;
+
+      async function fetchAuthored() {
+        return db.query.post.findMany({
+          where: and(
+            eq(post.authorId, userId),
+            tab === 'posts'
+              ? isNull(post.replyToPostId)
+              : isNotNull(post.replyToPostId),
+            cursor
+              ? or(
+                  lt(post.createdAt, new Date(cursor.createdAt)),
+                  and(
+                    eq(post.createdAt, new Date(cursor.createdAt)),
+                    lt(post.id, cursor.id),
+                  ),
+                )
+              : undefined,
+          ),
+          orderBy: [desc(post.createdAt), desc(post.id)],
+          limit: limit + 1,
+          with: {
+            author: {
+              columns: {
+                id: true,
+                name: true,
+                username: true,
+                displayUsername: true,
+                image: true,
+              },
+            },
+            media: {
+              orderBy: (media, { asc }) => [asc(media.position)],
+            },
+          },
+        });
+      }
+
+      if (tab === 'posts' || tab === 'replies') {
+        rows = await fetchAuthored();
+        if (rows.length > limit) {
+          rows.pop();
+          const last = rows[rows.length - 1]!;
+          nextCursor = {
+            createdAt: last.createdAt.toISOString(),
+            id: last.id,
+          };
+        }
+      } else {
+        // Page over the engagement rows (their createdAt is the sort key),
+        // then hydrate the posts in one IN-query and restore order.
+        const table = tab === 'likes' ? like : save;
+        const engagementRows = await db
+          .select({ postId: table.postId, createdAt: table.createdAt })
+          .from(table)
+          .where(
+            and(
+              eq(table.userId, userId),
+              cursor
+                ? or(
+                    lt(table.createdAt, new Date(cursor.createdAt)),
+                    and(
+                      eq(table.createdAt, new Date(cursor.createdAt)),
+                      lt(table.postId, cursor.id),
+                    ),
+                  )
+                : undefined,
+            ),
+          )
+          .orderBy(desc(table.createdAt), desc(table.postId))
+          .limit(limit + 1);
+
+        if (engagementRows.length > limit) {
+          engagementRows.pop();
+          const last = engagementRows[engagementRows.length - 1]!;
+          nextCursor = {
+            createdAt: last.createdAt.toISOString(),
+            id: last.postId,
+          };
+        }
+
+        const ids = engagementRows.map((row) => row.postId);
+        const posts =
+          ids.length === 0
+            ? []
+            : await db.query.post.findMany({
+                where: inArray(post.id, ids),
+                with: {
+                  author: {
+                    columns: {
+                      id: true,
+                      name: true,
+                      username: true,
+                      displayUsername: true,
+                      image: true,
+                    },
+                  },
+                  media: {
+                    orderBy: (media, { asc }) => [asc(media.position)],
+                  },
+                },
+              });
+        const byId = new Map(posts.map((row) => [row.id, row]));
+        rows = ids
+          .map((id) => byId.get(id))
+          .filter((row): row is NonNullable<typeof row> => row != null);
+      }
+
+      const engagement = await viewerEngagement(
+        db,
+        ctx.session?.user.id,
+        rows.map((row) => row.id),
+      );
+      const items = rows.map((row) => ({
+        ...row,
+        likedByMe: engagement.liked.has(row.id),
+        savedByMe: engagement.saved.has(row.id),
+      }));
+
+      return { items, nextCursor };
+    }),
+
+  setSave: protectedProcedure
+    .input(z.object({ postId: z.string().min(1), saved: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = createDb();
+      const userId = ctx.session.user.id;
+
+      if (input.saved) {
+        await db
+          .insert(save)
+          .values({ userId, postId: input.postId })
+          .onConflictDoNothing();
+      } else {
+        await db
+          .delete(save)
+          .where(and(eq(save.userId, userId), eq(save.postId, input.postId)));
+      }
+
+      return { saved: input.saved };
     }),
 
   setLike: protectedProcedure
