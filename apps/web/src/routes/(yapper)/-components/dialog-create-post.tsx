@@ -1,5 +1,6 @@
 import { authClient } from '@/lib/auth-client';
 import { uploadToImageKit } from '@/lib/imagekit';
+import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
@@ -160,10 +161,10 @@ export function DialogCreatePost({ trigger }: { trigger: React.ReactElement }) {
         </div>
 
         <div className="flex gap-3 px-4 pb-4">
-          <img
-            src={session?.user.image ?? '/prabowo.jpg'}
-            alt={session?.user.name ?? 'You'}
-            className="size-11 shrink-0 rounded-full object-cover"
+          <UserAvatar
+            name={session?.user.name ?? 'You'}
+            image={session?.user.image}
+            className="size-11 shrink-0"
           />
           <div className="min-w-0 flex-1">
             <textarea

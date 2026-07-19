@@ -1,4 +1,6 @@
 import { imageKitUrl } from '@/lib/imagekit';
+import { ProfileHoverCard } from '@/components/profile-hover-card';
+import { UserAvatar } from '@/components/user-avatar';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetSave } from '@/lib/use-set-save';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
@@ -33,25 +35,40 @@ export function PostCard({ post }: { post: PostListItem }) {
       className="border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors"
     >
       <div className="flex gap-3">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate({
-              to: '/profile/$userId',
-              params: { userId: post.author.id },
-            });
-          }}
-          className="h-fit shrink-0"
-        >
-          <img
-            src={post.author.image ?? '/prabowo.jpg'}
-            alt={post.author.name}
-            className="size-10 rounded-full object-cover"
-          />
-        </button>
+        <ProfileHoverCard userId={post.author.id}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({
+                to: '/profile/$userId',
+                params: { userId: post.author.id },
+              });
+            }}
+            className="h-fit shrink-0"
+          >
+            <UserAvatar
+              name={post.author.name}
+              image={post.author.image}
+              className="size-10"
+            />
+          </button>
+        </ProfileHoverCard>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1 text-sm">
-            <span className="truncate font-bold">{post.author.name}</span>
+            <ProfileHoverCard userId={post.author.id}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate({
+                    to: '/profile/$userId',
+                    params: { userId: post.author.id },
+                  });
+                }}
+                className="truncate font-bold hover:underline"
+              >
+                {post.author.name}
+              </button>
+            </ProfileHoverCard>
             <span className="text-muted-foreground truncate">@{handle}</span>
             <span className="text-muted-foreground">
               · {timeAgo(post.createdAt)}

@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { Bird, Hash, ImageIcon } from 'lucide-react';
 import { PostCard } from './post-card';
+import { UserAvatar } from '@/components/user-avatar';
 import { authClient } from '@/lib/auth-client';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
@@ -65,10 +66,10 @@ export function Feed() {
           <DialogCreatePost
             trigger={
               <button className="border-border hover:bg-accent/30 flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors">
-                <img
-                  src={s.user.image ?? '/prabowo.jpg'}
-                  alt={s.user.name}
-                  className="size-10 rounded-full object-cover"
+                <UserAvatar
+                  name={s.user.name}
+                  image={s.user.image}
+                  className="size-10"
                 />
                 <span className="text-muted-foreground flex-1 text-lg">
                   What's up?

@@ -1,0 +1,103 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+
+import { authClient } from '@/lib/auth-client';
+import { useTRPC } from '@/utils/trpc';
+
+interface ProfileShape {
+  id: string;
+  followerCount: number;
+  followedByMe: boolean;
+}
+
+interface PostShape {
+  author: { id: string; followedByMe?: boolean };
+}
+
+/**
+ * Optimistic follow/unfollow: updates every cached `user.byId` profile
+ * (flag + follower count) and `post.byId` author immediately, rolls back
+ * on error, and re-syncs with the server on settle.
+ */
+export function useSetFollow() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
+
+  const mutation = useMutation(
+    trpc.user.setFollow.mutationOptions({
+      onMutate: async ({ userId, followed }) => {
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: trpc.user.byId.queryKey() }),
+          queryClient.cancelQueries({ queryKey: trpc.post.byId.queryKey() }),
+        ]);
+        const snapshots = [
+          ...queryClient.getQueriesData({
+            queryKey: trpc.user.byId.queryKey(),
+          }),
+          ...queryClient.getQueriesData({
+            queryKey: trpc.post.byId.queryKey(),
+          }),
+        ];
+
+        queryClient.setQueriesData(
+          { queryKey: trpc.user.byId.queryKey() },
+          (old: unknown) => {
+            if (!old) return old;
+            const data = old as ProfileShape;
+            if (data.id !== userId || data.followedByMe === followed) {
+              return old;
+            }
+            return {
+              ...data,
+              followedByMe: followed,
+              followerCount: Math.max(
+                0,
+                data.followerCount + (followed ? 1 : -1),
+              ),
+            };
+          },
+        );
+
+        queryClient.setQueriesData(
+          { queryKey: trpc.post.byId.queryKey() },
+          (old: unknown) => {
+            if (!old) return old;
+            const data = old as PostShape;
+            if (
+              data.author.id !== userId ||
+              data.author.followedByMe === followed
+            ) {
+              return old;
+            }
+            return {
+              ...data,
+              author: { ...data.author, followedByMe: followed },
+            };
+          },
+        );
+
+        return { snapshots };
+      },
+      onError: (_error, _vars, context) => {
+        context?.snapshots.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+        toast.error('Could not update follow');
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.user.byId.queryKey() });
+        queryClient.invalidateQueries({ queryKey: trpc.post.byId.queryKey() });
+      },
+    }),
+  );
+
+  return (userId: string, followed: boolean) => {
+    if (!session) {
+      toast.error('Sign in to follow people');
+      return;
+    }
+    if (session.user.id === userId) return;
+    mutation.mutate({ userId, followed });
+  };
+}

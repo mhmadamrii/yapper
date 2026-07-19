@@ -24,9 +24,9 @@ function applyLike<T extends LikeShape>(
 }
 
 /**
- * Optimistic like/unlike: updates every cached `post.list` page and
- * `post.byId` result (including replies) immediately, rolls all of them
- * back on error, and re-syncs with the server on settle.
+ * Optimistic like/unlike: updates every cached `post.list` / `post.saved`
+ * page and `post.byId` result (including replies) immediately, rolls all of
+ * them back on error, and re-syncs with the server on settle.
  */
 export function useSetLike() {
   const trpc = useTRPC();

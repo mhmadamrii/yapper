@@ -1,3 +1,11 @@
+import { TRPCError } from '@trpc/server';
+import { createDb } from '@yapper/db';
+import { like, save } from '@yapper/db/schema/engagement';
+import { post, postMedia } from '@yapper/db/schema/post';
+import { follow, userStats } from '@yapper/db/schema/social';
+import { z } from 'zod';
+import { protectedProcedure, publicProcedure, router } from '../index';
+
 import {
   and,
   desc,
@@ -9,13 +17,6 @@ import {
   or,
   sql,
 } from 'drizzle-orm';
-import { TRPCError } from '@trpc/server';
-import { createDb } from '@yapper/db';
-import { like, save } from '@yapper/db/schema/engagement';
-import { post, postMedia } from '@yapper/db/schema/post';
-import { userStats } from '@yapper/db/schema/social';
-import { z } from 'zod';
-import { protectedProcedure, publicProcedure, router } from '../index';
 
 const mediaInput = z.object({
   fileId: z.string().min(1),
@@ -245,13 +246,31 @@ export const postRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
       }
 
-      const engagement = await viewerEngagement(db, ctx.session?.user.id, [
-        found.id,
-        ...found.replies.map((reply) => reply.id),
+      const viewerId = ctx.session?.user.id;
+      const [engagement, followRows] = await Promise.all([
+        viewerEngagement(db, viewerId, [
+          found.id,
+          ...found.replies.map((reply) => reply.id),
+        ]),
+        // Whether the viewer follows the post's author — drives the
+        // Follow button on the detail page.
+        viewerId && viewerId !== found.authorId
+          ? db
+              .select({ followerId: follow.followerId })
+              .from(follow)
+              .where(
+                and(
+                  eq(follow.followerId, viewerId),
+                  eq(follow.followeeId, found.authorId),
+                ),
+              )
+              .limit(1)
+          : Promise.resolve([]),
       ]);
 
       return {
         ...found,
+        author: { ...found.author, followedByMe: followRows.length > 0 },
         likedByMe: engagement.liked.has(found.id),
         savedByMe: engagement.saved.has(found.id),
         replies: found.replies.map((reply) => ({

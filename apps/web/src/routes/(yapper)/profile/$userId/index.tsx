@@ -7,6 +7,9 @@ import { ArrowLeft } from 'lucide-react';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
+import { UserAvatar } from '@/components/user-avatar';
+import { authClient } from '@/lib/auth-client';
+import { useSetFollow } from '@/lib/use-set-follow';
 import { formatCount } from '@/lib/utils';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { useTRPC } from '@/utils/trpc';
@@ -28,6 +31,8 @@ function ProfilePage() {
   const { userId } = Route.useParams();
   const router = useRouter();
   const trpc = useTRPC();
+  const { data: session } = authClient.useSession();
+  const setFollow = useSetFollow();
 
   const [tab, setTab] = useState<ProfileTab>('posts');
 
@@ -89,14 +94,20 @@ function ProfilePage() {
 
               <div className="px-4">
                 <div className="-mt-10 mb-3 flex items-end justify-between">
-                  <img
-                    src={user.image ?? '/prabowo.jpg'}
-                    alt={user.name}
-                    className="border-background size-20 rounded-full border-4 object-cover"
+                  <UserAvatar
+                    name={user.name}
+                    image={user.image}
+                    className="border-background size-20 border-4"
                   />
-                  <Button variant="secondary" className="rounded-full px-5">
-                    Follow
-                  </Button>
+                  <Show when={session?.user.id !== user.id}>
+                    <Button
+                      variant={user.followedByMe ? 'secondary' : 'default'}
+                      className="rounded-full px-5"
+                      onClick={() => setFollow(user.id, !user.followedByMe)}
+                    >
+                      {user.followedByMe ? 'Following' : 'Follow'}
+                    </Button>
+                  </Show>
                 </div>
 
                 <h2 className="text-2xl font-bold">{user.name}</h2>

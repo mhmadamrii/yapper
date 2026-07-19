@@ -3,6 +3,7 @@ import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-po
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
 import { authClient } from '@/lib/auth-client';
 import { ScrollToTop } from '@/components/scroll-to-top';
+import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
 
@@ -80,13 +81,13 @@ function AccountChip({ user }: { user: AccountUser }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <button className="group hover:bg-accent aria-expanded:bg-accent mb-4 flex w-fit max-w-full items-center gap-2.5 rounded-full p-1 transition-colors hover:pr-3 aria-expanded:pr-3" />
+          <button className="group hover:bg-accent aria-expanded:bg-accent mb-4 flex h-14 w-full items-center gap-2.5 rounded-full p-1 transition-colors hover:pr-3 aria-expanded:pr-3" />
         }
       >
-        <img
-          src={user.image ?? '/prabowo.jpg'}
-          alt={user.name}
-          className="size-12 shrink-0 rounded-full object-cover"
+        <UserAvatar
+          name={user.name}
+          image={user.image}
+          className="size-12 shrink-0 transition-[width,height] duration-200 group-hover:size-9 group-aria-expanded:size-9"
         />
         <span className="hidden min-w-0 flex-col text-left group-hover:flex group-aria-expanded:flex">
           <span className="truncate text-sm font-bold">{user.name}</span>

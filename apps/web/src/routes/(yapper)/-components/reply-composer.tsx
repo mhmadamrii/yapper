@@ -4,6 +4,7 @@ import { Button } from '@yapper/ui/components/button';
 import { toast } from 'sonner';
 
 import { Show } from '@/components/control-flow';
+import { UserAvatar } from '@/components/user-avatar';
 import { authClient } from '@/lib/auth-client';
 import { useTRPC } from '@/utils/trpc';
 
@@ -40,10 +41,10 @@ export function ReplyComposer({ postId }: { postId: string }) {
     <Show when={session}>
       {(s) => (
         <div className="border-border flex gap-3 border-b px-4 py-3">
-          <img
-            src={s.user.image ?? '/prabowo.jpg'}
-            alt={s.user.name}
-            className="size-9 shrink-0 rounded-full object-cover"
+          <UserAvatar
+            name={s.user.name}
+            image={s.user.image}
+            className="size-9 shrink-0"
           />
           <div className="min-w-0 flex-1">
             <textarea

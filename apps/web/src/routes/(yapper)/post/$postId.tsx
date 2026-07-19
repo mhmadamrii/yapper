@@ -3,13 +3,15 @@ import type { inferRouterOutputs } from '@trpc/server';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
+import { UserAvatar } from '@/components/user-avatar';
+import { authClient } from '@/lib/auth-client';
 import { imageKitUrl } from '@/lib/imagekit';
+import { useSetFollow } from '@/lib/use-set-follow';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetSave } from '@/lib/use-set-save';
 import { formatCount, formatPostTimestamp } from '@/lib/utils';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
-import { ReplyComposer } from '@/routes/(yapper)/-components/reply-composer';
 import { useTRPC } from '@/utils/trpc';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -127,7 +129,7 @@ function PostDetailPage() {
           {(post) => (
             <>
               <PostDetail post={post} />
-              <ReplyComposer postId={post.id} />
+              <ReplyDialogRow post={post} />
               <For each={post.replies}>
                 {(reply) => <PostCard key={reply.id} post={reply} />}
               </For>
@@ -139,23 +141,60 @@ function PostDetailPage() {
   );
 }
 
+// Bluesky-style reply row: looks like an inline composer, but opens the
+// reply dialog. Hidden when signed out, same as the old inline composer.
+function ReplyDialogRow({ post }: { post: PostById }) {
+  const { data: session } = authClient.useSession();
+
+  return (
+    <Show when={session}>
+      {(s) => (
+        <DialogCreateReply
+          post={post}
+          trigger={
+            <button className="border-border hover:bg-accent/30 flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors">
+              <UserAvatar
+                name={s.user.name}
+                image={s.user.image}
+                className="size-9 shrink-0"
+              />
+              <span className="text-muted-foreground">Write your reply</span>
+            </button>
+          }
+        />
+      )}
+    </Show>
+  );
+}
+
 function PostDetail({ post }: { post: PostById }) {
+  const { data: session } = authClient.useSession();
   const setLike = useSetLike();
   const setSave = useSetSave();
+  const setFollow = useSetFollow();
   const handle = post.author.username ?? 'unknown';
 
   return (
     <article className="border-border border-b px-4 pt-4 pb-3">
       <div className="flex items-center gap-3">
-        <img
-          src={post.author.image ?? '/prabowo.jpg'}
-          alt={post.author.name}
-          className="size-12 shrink-0 rounded-full object-cover"
+        <UserAvatar
+          name={post.author.name}
+          image={post.author.image}
+          className="size-12 shrink-0"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate font-bold">{post.author.name}</p>
           <p className="text-muted-foreground truncate text-sm">@{handle}</p>
         </div>
+        <Show when={session?.user.id !== post.author.id}>
+          <Button
+            variant={post.author.followedByMe ? 'secondary' : 'default'}
+            className="shrink-0 rounded-full px-4"
+            onClick={() => setFollow(post.author.id, !post.author.followedByMe)}
+          >
+            {post.author.followedByMe ? 'Following' : 'Follow'}
+          </Button>
+        </Show>
       </div>
 
       <p className="mt-3 text-xl leading-normal whitespace-pre-wrap">

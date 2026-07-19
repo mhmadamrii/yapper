@@ -8,6 +8,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { For, Show } from '@/components/control-flow';
+import { UserAvatar } from '@/components/user-avatar';
 import { CharProgress } from './dialog-create-post';
 
 import {
@@ -184,10 +185,10 @@ export function DialogCreateReply({
           </div>
 
           <div className="border-border flex gap-3 border-b px-4 pb-4">
-            <img
-              src={post.author.image ?? '/prabowo.jpg'}
-              alt={post.author.name}
-              className="size-11 shrink-0 rounded-full object-cover"
+            <UserAvatar
+              name={post.author.name}
+              image={post.author.image}
+              className="size-11 shrink-0"
             />
             <div className="min-w-0 flex-1">
               <p className="font-bold">{post.author.name}</p>
@@ -205,10 +206,10 @@ export function DialogCreateReply({
           </div>
 
           <div className="flex gap-3 px-4 py-4">
-            <img
-              src={session?.user.image ?? '/prabowo.jpg'}
-              alt={session?.user.name ?? 'You'}
-              className="size-11 shrink-0 rounded-full object-cover"
+            <UserAvatar
+              name={session?.user.name ?? 'You'}
+              image={session?.user.image}
+              className="size-11 shrink-0"
             />
             <div className="min-w-0 flex-1">
               <textarea
