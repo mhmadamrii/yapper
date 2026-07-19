@@ -21,7 +21,16 @@ import type { inferRouterOutputs } from '@trpc/server';
 
 export type PostListItem = inferRouterOutputs<AppRouter>['post']['list']['items'][number]; // prettier-ignore
 
-export function PostCard({ post }: { post: PostListItem }) {
+export function PostCard({
+  post,
+  // Thread context (e.g. the parent above a reply on the detail page):
+  // draws a vertical line from the avatar to the card's bottom edge and
+  // drops the bottom border so the thread reads as one column.
+  threadLine = false,
+}: {
+  post: PostListItem;
+  threadLine?: boolean;
+}) {
   const navigate = useNavigate();
   const setLike = useSetLike();
   const setSave = useSetSave();
@@ -32,27 +41,36 @@ export function PostCard({ post }: { post: PostListItem }) {
       onClick={() =>
         navigate({ to: '/post/$postId', params: { postId: post.id } })
       }
-      className="border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors"
+      className={`hover:bg-accent/30 cursor-pointer px-4 py-3 transition-colors ${
+        threadLine ? '' : 'border-border border-b'
+      }`}
     >
       <div className="flex gap-3">
-        <ProfileHoverCard userId={post.author.id}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate({
-                to: '/profile/$userId',
-                params: { userId: post.author.id },
-              });
-            }}
-            className="h-fit shrink-0"
-          >
-            <UserAvatar
-              name={post.author.name}
-              image={post.author.image}
-              className="size-10"
-            />
-          </button>
-        </ProfileHoverCard>
+        <div
+          className={
+            threadLine ? 'flex w-12 shrink-0 flex-col items-center' : 'contents'
+          }
+        >
+          <ProfileHoverCard userId={post.author.id}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate({
+                  to: '/profile/$userId',
+                  params: { userId: post.author.id },
+                });
+              }}
+              className="h-fit shrink-0"
+            >
+              <UserAvatar
+                name={post.author.name}
+                image={post.author.image}
+                className="size-10"
+              />
+            </button>
+          </ProfileHoverCard>
+          {threadLine && <div className="bg-border mt-1 -mb-3 w-px flex-1" />}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1 text-sm">
             <ProfileHoverCard userId={post.author.id}>

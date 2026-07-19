@@ -128,6 +128,9 @@ function PostDetailPage() {
         <Match when={postQuery.data}>
           {(post) => (
             <>
+              <Show when={post.replyTo}>
+                {(parent) => <PostCard post={parent} threadLine />}
+              </Show>
               <PostDetail post={post} />
               <ReplyDialogRow post={post} />
               <For each={post.replies}>
@@ -175,7 +178,14 @@ function PostDetail({ post }: { post: PostById }) {
   const handle = post.author.username ?? 'unknown';
 
   return (
-    <article className="border-border border-b px-4 pt-4 pb-3">
+    <article className="border-border relative border-b px-4 pt-4 pb-3">
+      {/* Continues the thread line from the parent card into this avatar:
+          left-10 = px-4 (16px) + half the size-12 avatar (24px), then
+          -translate-x-1/2 centers the 1px line on that axis — matching the
+          parent card's centered w-12 avatar column exactly. */}
+      <Show when={post.replyTo != null}>
+        <div className="bg-border absolute top-0 left-10 h-4 w-px -translate-x-1/2" />
+      </Show>
       <div className="flex items-center gap-3">
         <UserAvatar
           name={post.author.name}

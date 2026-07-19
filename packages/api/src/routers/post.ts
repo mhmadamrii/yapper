@@ -217,6 +217,24 @@ export const postRouter = router({
           media: {
             orderBy: (media, { asc }) => [asc(media.position)],
           },
+          // Parent post, when this is a reply — the detail page renders it
+          // above the focused post with a thread line.
+          replyTo: {
+            with: {
+              author: {
+                columns: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  displayUsername: true,
+                  image: true,
+                },
+              },
+              media: {
+                orderBy: (media, { asc }) => [asc(media.position)],
+              },
+            },
+          },
           replies: {
             orderBy: (reply, { asc, desc }) =>
               input.replySort === 'top'
@@ -250,6 +268,7 @@ export const postRouter = router({
       const [engagement, followRows] = await Promise.all([
         viewerEngagement(db, viewerId, [
           found.id,
+          ...(found.replyTo ? [found.replyTo.id] : []),
           ...found.replies.map((reply) => reply.id),
         ]),
         // Whether the viewer follows the post's author — drives the
@@ -273,6 +292,13 @@ export const postRouter = router({
         author: { ...found.author, followedByMe: followRows.length > 0 },
         likedByMe: engagement.liked.has(found.id),
         savedByMe: engagement.saved.has(found.id),
+        replyTo: found.replyTo
+          ? {
+              ...found.replyTo,
+              likedByMe: engagement.liked.has(found.replyTo.id),
+              savedByMe: engagement.saved.has(found.replyTo.id),
+            }
+          : null,
         replies: found.replies.map((reply) => ({
           ...reply,
           likedByMe: engagement.liked.has(reply.id),
