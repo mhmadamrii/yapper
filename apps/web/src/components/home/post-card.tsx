@@ -4,6 +4,7 @@ import { useSetSave } from '@/lib/use-set-save';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { formatCount, timeAgo } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
+
 import {
   Bookmark,
   Ellipsis,
@@ -16,8 +17,7 @@ import {
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
-export type PostListItem =
-  inferRouterOutputs<AppRouter>['post']['list']['items'][number];
+export type PostListItem = inferRouterOutputs<AppRouter>['post']['list']['items'][number]; // prettier-ignore
 
 export function PostCard({ post }: { post: PostListItem }) {
   const navigate = useNavigate();
@@ -49,7 +49,6 @@ export function PostCard({ post }: { post: PostListItem }) {
             className="size-10 rounded-full object-cover"
           />
         </button>
-
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1 text-sm">
             <span className="truncate font-bold">{post.author.name}</span>
@@ -58,11 +57,9 @@ export function PostCard({ post }: { post: PostListItem }) {
               · {timeAgo(post.createdAt)}
             </span>
           </div>
-
           <p className="mt-0.5 text-[15px] leading-normal whitespace-pre-wrap">
             {post.content}
           </p>
-
           {post.media.length > 0 && (
             <div
               className={
@@ -84,8 +81,7 @@ export function PostCard({ post }: { post: PostListItem }) {
               ))}
             </div>
           )}
-
-          <div className="text-muted-foreground mt-3 flex items-center justify-between pr-8 text-sm">
+          <div className="text-muted-foreground mt-3 flex items-center justify-between text-sm">
             <DialogCreateReply
               post={post}
               trigger={
@@ -117,26 +113,28 @@ export function PostCard({ post }: { post: PostListItem }) {
               />
               {formatCount(post.likeCount)}
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSave(post.id, !post.savedByMe);
-              }}
-              className={`hover:text-foreground transition-colors ${
-                post.savedByMe ? 'text-primary' : ''
-              }`}
-            >
-              <Bookmark
-                className="size-4"
-                fill={post.savedByMe ? 'currentColor' : 'none'}
-              />
-            </button>
-            <button className="hover:text-foreground transition-colors">
-              <Share className="size-4" />
-            </button>
-            <button className="hover:text-foreground transition-colors">
-              <Ellipsis className="size-4" />
-            </button>
+            <div className="flex items-center justify-between gap-2 w-[20%]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSave(post.id, !post.savedByMe);
+                }}
+                className={`hover:text-foreground transition-colors ${
+                  post.savedByMe ? 'text-primary' : ''
+                }`}
+              >
+                <Bookmark
+                  className="size-4"
+                  fill={post.savedByMe ? 'currentColor' : 'none'}
+                />
+              </button>
+              <button className="hover:text-foreground transition-colors">
+                <Share className="size-4" />
+              </button>
+              <button className="hover:text-foreground transition-colors">
+                <Ellipsis className="size-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

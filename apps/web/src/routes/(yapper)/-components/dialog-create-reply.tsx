@@ -143,145 +143,154 @@ export function DialogCreateReply({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (isPosting) return;
-        setOpen(next);
-        if (!next) reset();
-      }}
-    >
-      <DialogTrigger render={trigger} />
+    // The dialog is portaled to <body>, but React synthetic events still
+    // bubble through the React tree — without this barrier, clicks inside
+    // the dialog (backdrop, Cancel) reach ancestor onClick handlers like
+    // PostCard's navigate-to-detail.
+    <div className="contents" onClick={(e) => e.stopPropagation()}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (isPosting) return;
+          setOpen(next);
+          if (!next) reset();
+        }}
+      >
+        <DialogTrigger render={trigger} />
 
-      <DialogContent showCloseButton={false} className="gap-0 p-0 sm:max-w-xl">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Button
-            variant="ghost"
-            className="text-primary text-base"
-            disabled={isPosting}
-            onClick={() => {
-              reset();
-              setOpen(false);
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="rounded-full px-6"
-            disabled={!canReply}
-            onClick={handleReply}
-          >
-            {isPosting ? 'Replying...' : 'Reply'}
-          </Button>
-        </div>
-
-        <div className="border-border flex gap-3 border-b px-4 pb-4">
-          <img
-            src={post.author.image ?? '/prabowo.jpg'}
-            alt={post.author.name}
-            className="size-11 shrink-0 rounded-full object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="font-bold">{post.author.name}</p>
-            <p className="line-clamp-3 text-[15px]">{post.content}</p>
-          </div>
-          <Show when={post.media[0]}>
-            {(m) => (
-              <img
-                src={imageKitUrl(m.filePath, 'w-200,f-auto,q-auto')}
-                alt={m.altText ?? ''}
-                className="border-border size-20 shrink-0 rounded-lg border object-cover"
-              />
-            )}
-          </Show>
-        </div>
-
-        <div className="flex gap-3 px-4 py-4">
-          <img
-            src={session?.user.image ?? '/prabowo.jpg'}
-            alt={session?.user.name ?? 'You'}
-            className="size-11 shrink-0 rounded-full object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <textarea
-              autoFocus
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Write your reply"
-              rows={images.length > 0 ? 3 : 6}
-              className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
-            />
-
-            <Show when={images.length > 0}>
-              <div className="grid grid-cols-2 gap-2">
-                <For each={images}>
-                  {(img, i) => (
-                    <div key={img.previewUrl} className="relative">
-                      <img
-                        src={img.previewUrl}
-                        alt=""
-                        className="border-border h-36 w-full rounded-lg border object-cover"
-                      />
-                      <button
-                        onClick={() => removeImage(i)}
-                        className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </Show>
-          </div>
-        </div>
-
-        <div className="border-border flex items-center justify-between border-t px-4 py-3">
-          <div className="text-primary flex items-center gap-1">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              onChange={(e) => {
-                addFiles(e.target.files);
-                e.target.value = '';
-              }}
-            />
+        <DialogContent
+          showCloseButton={false}
+          className="gap-0 p-0 sm:max-w-xl"
+        >
+          <div className="flex items-center justify-between px-4 py-3">
             <Button
               variant="ghost"
-              size="icon-sm"
-              disabled={images.length >= MAX_IMAGES}
-              onClick={() => fileInputRef.current?.click()}
+              className="text-primary text-base"
+              disabled={isPosting}
+              onClick={() => {
+                reset();
+                setOpen(false);
+              }}
             >
-              <ImageIcon className="size-5" />
+              Cancel
             </Button>
-            <Button variant="ghost" size="icon-sm">
-              <ImagePlay className="size-5" />
-            </Button>
-            <Button variant="ghost" size="icon-sm">
-              <Smile className="size-5" />
+            <Button
+              className="rounded-full px-6"
+              disabled={!canReply}
+              onClick={handleReply}
+            >
+              {isPosting ? 'Replying...' : 'Reply'}
             </Button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button className="text-primary text-sm font-medium">
-              English
-            </button>
-            <span
-              className={
-                remaining < 0
-                  ? 'text-destructive text-sm'
-                  : 'text-muted-foreground text-sm'
-              }
-            >
-              {remaining}
-            </span>
-            <CharProgress used={text.length} max={MAX_POST_LENGTH} />
+          <div className="border-border flex gap-3 border-b px-4 pb-4">
+            <img
+              src={post.author.image ?? '/prabowo.jpg'}
+              alt={post.author.name}
+              className="size-11 shrink-0 rounded-full object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold">{post.author.name}</p>
+              <p className="line-clamp-3 text-[15px]">{post.content}</p>
+            </div>
+            <Show when={post.media[0]}>
+              {(m) => (
+                <img
+                  src={imageKitUrl(m.filePath, 'w-200,f-auto,q-auto')}
+                  alt={m.altText ?? ''}
+                  className="border-border size-20 shrink-0 rounded-lg border object-cover"
+                />
+              )}
+            </Show>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+          <div className="flex gap-3 px-4 py-4">
+            <img
+              src={session?.user.image ?? '/prabowo.jpg'}
+              alt={session?.user.name ?? 'You'}
+              className="size-11 shrink-0 rounded-full object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <textarea
+                autoFocus
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Write your reply"
+                rows={images.length > 0 ? 3 : 6}
+                className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
+              />
+
+              <Show when={images.length > 0}>
+                <div className="grid grid-cols-2 gap-2">
+                  <For each={images}>
+                    {(img, i) => (
+                      <div key={img.previewUrl} className="relative">
+                        <img
+                          src={img.previewUrl}
+                          alt=""
+                          className="border-border h-36 w-full rounded-lg border object-cover"
+                        />
+                        <button
+                          onClick={() => removeImage(i)}
+                          className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </div>
+          </div>
+
+          <div className="border-border flex items-center justify-between border-t px-4 py-3">
+            <div className="text-primary flex items-center gap-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={images.length >= MAX_IMAGES}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon className="size-5" />
+              </Button>
+              <Button variant="ghost" size="icon-sm">
+                <ImagePlay className="size-5" />
+              </Button>
+              <Button variant="ghost" size="icon-sm">
+                <Smile className="size-5" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button className="text-primary text-sm font-medium">
+                English
+              </button>
+              <span
+                className={
+                  remaining < 0
+                    ? 'text-destructive text-sm'
+                    : 'text-muted-foreground text-sm'
+                }
+              >
+                {remaining}
+              </span>
+              <CharProgress used={text.length} max={MAX_POST_LENGTH} />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

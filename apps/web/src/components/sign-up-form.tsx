@@ -1,5 +1,6 @@
 import z from 'zod';
 
+import { Loader } from './loader';
 import { Label } from '@yapper/ui/components/label';
 import { authClient } from '@/lib/auth-client';
 import { AtSignIcon, LockIcon, MailIcon, UserIcon } from 'lucide-react';
@@ -16,8 +17,6 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@yapper/ui/components/input-group';
-
-import Loader from './loader';
 
 const USERNAME_SUFFIX = '.yapper';
 

@@ -19,9 +19,9 @@ function applySave<T extends SaveShape>(
 }
 
 /**
- * Optimistic save/unsave (bookmark): updates every cached `post.list` page
- * and `post.byId` result (including replies) immediately, rolls back on
- * error, and re-syncs with the server on settle.
+ * Optimistic save/unsave (bookmark): updates every cached `post.list` /
+ * `post.saved` page and `post.byId` result (including replies) immediately,
+ * rolls back on error, and re-syncs with the server on settle.
  */
 export function useSetSave() {
   const trpc = useTRPC();
@@ -36,22 +36,28 @@ export function useSetSave() {
           queryKey: trpc.post.pathKey(),
         });
 
+        const applyToInfinite = (old: unknown) => {
+          if (!old) return old;
+          const data = old as {
+            pages: Array<{ items: SaveShape[]; nextCursor: unknown }>;
+            pageParams: unknown[];
+          };
+          return {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) => applySave(item, postId, saved)),
+            })),
+          };
+        };
+
         queryClient.setQueriesData(
           { queryKey: trpc.post.list.infiniteQueryKey() },
-          (old: unknown) => {
-            if (!old) return old;
-            const data = old as {
-              pages: Array<{ items: SaveShape[]; nextCursor: unknown }>;
-              pageParams: unknown[];
-            };
-            return {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                items: page.items.map((item) => applySave(item, postId, saved)),
-              })),
-            };
-          },
+          applyToInfinite,
+        );
+        queryClient.setQueriesData(
+          { queryKey: trpc.post.saved.infiniteQueryKey() },
+          applyToInfinite,
         );
 
         queryClient.setQueriesData(

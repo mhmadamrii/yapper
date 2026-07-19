@@ -53,6 +53,74 @@ async function viewerEngagement(
   };
 }
 
+// Page over a user's engagement rows (like/save) — their createdAt is the
+// keyset sort key — then hydrate the posts in one IN-query and restore order.
+async function pageEngagedPosts(
+  db: ReturnType<typeof createDb>,
+  table: typeof like | typeof save,
+  userId: string,
+  limit: number,
+  cursor: { createdAt: string; id: string } | null | undefined,
+) {
+  const engagementRows = await db
+    .select({ postId: table.postId, createdAt: table.createdAt })
+    .from(table)
+    .where(
+      and(
+        eq(table.userId, userId),
+        cursor
+          ? or(
+              lt(table.createdAt, new Date(cursor.createdAt)),
+              and(
+                eq(table.createdAt, new Date(cursor.createdAt)),
+                lt(table.postId, cursor.id),
+              ),
+            )
+          : undefined,
+      ),
+    )
+    .orderBy(desc(table.createdAt), desc(table.postId))
+    .limit(limit + 1);
+
+  let nextCursor: { createdAt: string; id: string } | null = null;
+  if (engagementRows.length > limit) {
+    engagementRows.pop();
+    const last = engagementRows[engagementRows.length - 1]!;
+    nextCursor = {
+      createdAt: last.createdAt.toISOString(),
+      id: last.postId,
+    };
+  }
+
+  const ids = engagementRows.map((row) => row.postId);
+  const posts =
+    ids.length === 0
+      ? []
+      : await db.query.post.findMany({
+          where: inArray(post.id, ids),
+          with: {
+            author: {
+              columns: {
+                id: true,
+                name: true,
+                username: true,
+                displayUsername: true,
+                image: true,
+              },
+            },
+            media: {
+              orderBy: (media, { asc }) => [asc(media.position)],
+            },
+          },
+        });
+  const byId = new Map(posts.map((row) => [row.id, row]));
+  const rows = ids
+    .map((id) => byId.get(id))
+    .filter((row): row is NonNullable<typeof row> => row != null);
+
+  return { rows, nextCursor };
+}
+
 export const postRouter = router({
   list: publicProcedure
     .input(
@@ -324,63 +392,10 @@ export const postRouter = router({
           };
         }
       } else {
-        // Page over the engagement rows (their createdAt is the sort key),
-        // then hydrate the posts in one IN-query and restore order.
         const table = tab === 'likes' ? like : save;
-        const engagementRows = await db
-          .select({ postId: table.postId, createdAt: table.createdAt })
-          .from(table)
-          .where(
-            and(
-              eq(table.userId, userId),
-              cursor
-                ? or(
-                    lt(table.createdAt, new Date(cursor.createdAt)),
-                    and(
-                      eq(table.createdAt, new Date(cursor.createdAt)),
-                      lt(table.postId, cursor.id),
-                    ),
-                  )
-                : undefined,
-            ),
-          )
-          .orderBy(desc(table.createdAt), desc(table.postId))
-          .limit(limit + 1);
-
-        if (engagementRows.length > limit) {
-          engagementRows.pop();
-          const last = engagementRows[engagementRows.length - 1]!;
-          nextCursor = {
-            createdAt: last.createdAt.toISOString(),
-            id: last.postId,
-          };
-        }
-
-        const ids = engagementRows.map((row) => row.postId);
-        const posts =
-          ids.length === 0
-            ? []
-            : await db.query.post.findMany({
-                where: inArray(post.id, ids),
-                with: {
-                  author: {
-                    columns: {
-                      id: true,
-                      name: true,
-                      username: true,
-                      displayUsername: true,
-                      image: true,
-                    },
-                  },
-                  media: {
-                    orderBy: (media, { asc }) => [asc(media.position)],
-                  },
-                },
-              });
-        const byId = new Map(posts.map((row) => [row.id, row]));
-        rows = ids
-          .map((id) => byId.get(id))
-          .filter((row): row is NonNullable<typeof row> => row != null);
+        const paged = await pageEngagedPosts(db, table, userId, limit, cursor);
+        rows = paged.rows;
+        nextCursor = paged.nextCursor;
       }
 
       const engagement = await viewerEngagement(
@@ -392,6 +407,42 @@ export const postRouter = router({
         ...row,
         likedByMe: engagement.liked.has(row.id),
         savedByMe: engagement.saved.has(row.id),
+      }));
+
+      return { items, nextCursor };
+    }),
+
+  // The viewer's own bookmarks — protected because saves are private to
+  // the account (unlike likes, which show on public profiles).
+  saved: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(50).default(20),
+        // Keyset cursor: (save.createdAt, postId) of the last item.
+        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const userId = ctx.session.user.id;
+
+      const { rows, nextCursor } = await pageEngagedPosts(
+        db,
+        save,
+        userId,
+        input.limit,
+        input.cursor,
+      );
+
+      const engagement = await viewerEngagement(
+        db,
+        userId,
+        rows.map((row) => row.id),
+      );
+      const items = rows.map((row) => ({
+        ...row,
+        likedByMe: engagement.liked.has(row.id),
+        savedByMe: true,
       }));
 
       return { items, nextCursor };

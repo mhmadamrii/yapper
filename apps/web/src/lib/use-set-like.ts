@@ -41,22 +41,28 @@ export function useSetLike() {
           queryKey: trpc.post.pathKey(),
         });
 
+        const applyToInfinite = (old: unknown) => {
+          if (!old) return old;
+          const data = old as {
+            pages: Array<{ items: LikeShape[]; nextCursor: unknown }>;
+            pageParams: unknown[];
+          };
+          return {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) => applyLike(item, postId, liked)),
+            })),
+          };
+        };
+
         queryClient.setQueriesData(
           { queryKey: trpc.post.list.infiniteQueryKey() },
-          (old: unknown) => {
-            if (!old) return old;
-            const data = old as {
-              pages: Array<{ items: LikeShape[]; nextCursor: unknown }>;
-              pageParams: unknown[];
-            };
-            return {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                items: page.items.map((item) => applyLike(item, postId, liked)),
-              })),
-            };
-          },
+          applyToInfinite,
+        );
+        queryClient.setQueriesData(
+          { queryKey: trpc.post.saved.infiniteQueryKey() },
+          applyToInfinite,
         );
 
         queryClient.setQueriesData(
