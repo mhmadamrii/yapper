@@ -6,6 +6,7 @@ import { Skeleton } from '@yapper/ui/components/skeleton';
 
 import { Match, Show, Switch } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
+import { VerifiedBadge } from '@/components/verified-badge';
 import { authClient } from '@/lib/auth-client';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { formatCount } from '@/lib/utils';
@@ -90,8 +91,9 @@ export function ProfileHoverCard({
                 </div>
 
                 <button onClick={goToProfile} className="mt-2 block text-left">
-                  <p className="text-base font-bold hover:underline">
-                    {user.name}
+                  <p className="flex items-center gap-1 text-base font-bold hover:underline">
+                    <span className="truncate">{user.name}</span>
+                    {user.emailVerified && <VerifiedBadge />}
                   </p>
                   <p className="text-muted-foreground">
                     @{user.username ?? 'unknown'}

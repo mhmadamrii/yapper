@@ -4,12 +4,14 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
 import { ArrowLeft } from 'lucide-react';
-
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { UserAvatar } from '@/components/user-avatar';
+import { VerifiedBadge } from '@/components/verified-badge';
 import { authClient } from '@/lib/auth-client';
+import { imageKitUrl } from '@/lib/imagekit';
 import { useSetFollow } from '@/lib/use-set-follow';
+import { DialogEditProfile } from '@/routes/(yapper)/-components/dialog-edit-profile';
 import { formatCount } from '@/lib/utils';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { useTRPC } from '@/utils/trpc';
@@ -90,7 +92,23 @@ function ProfilePage() {
         <Match when={userQuery.data}>
           {(user) => (
             <>
-              <div className="from-primary/40 to-primary/10 h-36 bg-gradient-to-r" />
+              <Show
+                when={user.bannerPath}
+                fallback={
+                  <div className="from-primary/40 to-primary/10 h-36 bg-gradient-to-r" />
+                }
+              >
+                {(bannerPath) => (
+                  <img
+                    src={imageKitUrl(
+                      bannerPath,
+                      'w-1200,h-400,fo-auto,f-auto,q-auto',
+                    )}
+                    alt=""
+                    className="h-36 w-full object-cover"
+                  />
+                )}
+              </Show>
 
               <div className="px-4">
                 <div className="-mt-10 mb-3 flex items-end justify-between">
@@ -99,7 +117,22 @@ function ProfilePage() {
                     image={user.image}
                     className="border-background size-20 border-4"
                   />
-                  <Show when={session?.user.id !== user.id}>
+                  <Show
+                    when={session?.user.id !== user.id}
+                    fallback={
+                      <DialogEditProfile
+                        profile={user}
+                        trigger={
+                          <Button
+                            variant="secondary"
+                            className="rounded-full px-5"
+                          >
+                            Edit profile
+                          </Button>
+                        }
+                      />
+                    }
+                  >
                     <Button
                       variant={user.followedByMe ? 'secondary' : 'default'}
                       className="rounded-full px-5"
@@ -110,12 +143,15 @@ function ProfilePage() {
                   </Show>
                 </div>
 
-                <h2 className="text-2xl font-bold">{user.name}</h2>
+                <h2 className="flex items-center gap-1.5 text-2xl font-bold">
+                  <span className="truncate">{user.name}</span>
+                  {user.emailVerified && <VerifiedBadge className="size-5" />}
+                </h2>
                 <p className="text-muted-foreground">
                   @{user.username ?? 'unknown'}
                 </p>
 
-                <div className="mt-2 mb-4 flex gap-4 text-sm">
+                <div className="mt-2 flex gap-4 text-sm">
                   <span>
                     <span className="font-bold">
                       {formatCount(user.followerCount)}
@@ -135,6 +171,14 @@ function ProfilePage() {
                     <span className="text-muted-foreground">posts</span>
                   </span>
                 </div>
+
+                <Show when={user.bio}>
+                  {(bio) => (
+                    <p className="mt-2 mb-5 whitespace-pre-wrap text-[15px]">
+                      {bio}
+                    </p>
+                  )}
+                </Show>
               </div>
             </>
           )}

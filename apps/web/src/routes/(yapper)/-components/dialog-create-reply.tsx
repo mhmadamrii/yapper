@@ -3,11 +3,12 @@ import { imageKitUrl, uploadToImageKit } from '@/lib/imagekit';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import { ImageIcon, ImagePlay, Smile, X } from 'lucide-react';
+import { ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { For, Show } from '@/components/control-flow';
+import { GifPickerButton } from './gif-picker-button';
 import { UserAvatar } from '@/components/user-avatar';
 import { CharProgress } from './dialog-create-post';
 
@@ -266,9 +267,14 @@ export function DialogCreateReply({
               >
                 <ImageIcon className="size-5" />
               </Button>
-              <Button variant="ghost" size="icon-sm">
-                <ImagePlay className="size-5" />
-              </Button>
+              <GifPickerButton
+                disabled={images.length >= MAX_IMAGES}
+                onPick={(image) =>
+                  setImages((prev) =>
+                    prev.length >= MAX_IMAGES ? prev : [...prev, image],
+                  )
+                }
+              />
               <Button variant="ghost" size="icon-sm">
                 <Smile className="size-5" />
               </Button>

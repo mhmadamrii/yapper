@@ -1,6 +1,7 @@
 import { imageKitUrl } from '@/lib/imagekit';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
+import { VerifiedBadge } from '@/components/verified-badge';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetSave } from '@/lib/use-set-save';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
@@ -82,9 +83,10 @@ export function PostCard({
                     params: { userId: post.author.id },
                   });
                 }}
-                className="truncate font-bold hover:underline"
+                className="flex min-w-0 items-center gap-1 font-bold hover:underline"
               >
-                {post.author.name}
+                <span className="truncate">{post.author.name}</span>
+                {post.author.emailVerified && <VerifiedBadge />}
               </button>
             </ProfileHoverCard>
             <span className="text-muted-foreground truncate">@{handle}</span>

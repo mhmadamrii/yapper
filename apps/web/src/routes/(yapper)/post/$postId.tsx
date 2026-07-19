@@ -4,6 +4,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { UserAvatar } from '@/components/user-avatar';
+import { VerifiedBadge } from '@/components/verified-badge';
 import { authClient } from '@/lib/auth-client';
 import { imageKitUrl } from '@/lib/imagekit';
 import { useSetFollow } from '@/lib/use-set-follow';
@@ -193,7 +194,10 @@ function PostDetail({ post }: { post: PostById }) {
           className="size-12 shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold">{post.author.name}</p>
+          <p className="flex items-center gap-1 font-bold">
+            <span className="truncate">{post.author.name}</span>
+            {post.author.emailVerified && <VerifiedBadge />}
+          </p>
           <p className="text-muted-foreground truncate text-sm">@{handle}</p>
         </div>
         <Show when={session?.user.id !== post.author.id}>

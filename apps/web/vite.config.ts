@@ -15,6 +15,11 @@ export default defineConfig(({ command }) => ({
   plugins: [tailwindcss(), tanstackStart(), nitro(), viteReact()],
   // Bundle all SSR deps on build only: Vercel functions have no node_modules
   // at runtime, but in dev noExternal makes the module runner evaluate CJS
-  // deps (e.g. react) as ESM and crash with "module is not defined"
-  ssr: command === 'build' ? { noExternal: true } : undefined,
+  // deps (e.g. react) as ESM and crash with "module is not defined".
+  // gif-picker-react must be bundled in dev too — it imports its own .css,
+  // which Node's ESM loader can't evaluate when the package stays external.
+  ssr:
+    command === 'build'
+      ? { noExternal: true }
+      : { noExternal: ['gif-picker-react'] },
 }));

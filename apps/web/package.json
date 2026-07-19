@@ -22,6 +22,7 @@
     "@yapper/ui": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
+    "gif-picker-react": "^2.0.0",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
     "nitro": "^3.0.260610-beta",
