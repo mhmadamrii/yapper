@@ -3,6 +3,8 @@ import type { inferRouterOutputs } from '@trpc/server';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
+import { PostCardMenu } from '@/components/home/post-card-menu';
+import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { authClient } from '@/lib/auth-client';
@@ -16,7 +18,11 @@ import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-r
 import { useTRPC } from '@/utils/trpc';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 
 import {
@@ -32,7 +38,6 @@ import {
 import {
   ArrowLeft,
   Bookmark,
-  Ellipsis,
   Heart,
   MessageCircle,
   Repeat2,
@@ -172,11 +177,15 @@ function ReplyDialogRow({ post }: { post: PostById }) {
 }
 
 function PostDetail({ post }: { post: PostById }) {
+  const navigate = useNavigate();
   const { data: session } = authClient.useSession();
   const setLike = useSetLike();
   const setSave = useSetSave();
   const setFollow = useSetFollow();
   const handle = post.author.username ?? 'unknown';
+
+  const goToProfile = () =>
+    navigate({ to: '/profile/$userId', params: { userId: post.author.id } });
 
   return (
     <article className="border-border relative border-b px-4 pt-4 pb-3">
@@ -188,16 +197,28 @@ function PostDetail({ post }: { post: PostById }) {
         <div className="bg-border absolute top-0 left-10 h-4 w-px -translate-x-1/2" />
       </Show>
       <div className="flex items-center gap-3">
-        <UserAvatar
-          name={post.author.name}
-          image={post.author.image}
-          className="size-12 shrink-0"
-        />
+        <ProfileHoverCard userId={post.author.id}>
+          <button
+            onClick={goToProfile}
+            className="h-fit shrink-0 cursor-pointer"
+          >
+            <UserAvatar
+              name={post.author.name}
+              image={post.author.image}
+              className="size-12 shrink-0"
+            />
+          </button>
+        </ProfileHoverCard>
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 font-bold">
-            <span className="truncate">{post.author.name}</span>
-            {post.author.emailVerified && <VerifiedBadge />}
-          </p>
+          <ProfileHoverCard userId={post.author.id}>
+            <button
+              onClick={goToProfile}
+              className="flex min-w-0 cursor-pointer items-center gap-1 font-bold hover:underline"
+            >
+              <span className="truncate">{post.author.name}</span>
+              {post.author.emailVerified && <VerifiedBadge />}
+            </button>
+          </ProfileHoverCard>
           <p className="text-muted-foreground truncate text-sm">@{handle}</p>
         </div>
         <Show when={session?.user.id !== post.author.id}>
@@ -261,7 +282,7 @@ function PostDetail({ post }: { post: PostById }) {
         </div>
       </Show>
 
-      <div className="text-muted-foreground mt-3 flex items-center justify-between pr-8 text-sm">
+      <div className="text-muted-foreground mt-3 flex items-center justify-between text-sm">
         <DialogCreateReply
           post={post}
           trigger={
@@ -287,23 +308,23 @@ function PostDetail({ post }: { post: PostById }) {
           />
           {formatCount(post.likeCount)}
         </button>
-        <button
-          onClick={() => setSave(post.id, !post.savedByMe)}
-          className={`hover:text-foreground transition-colors ${
-            post.savedByMe ? 'text-primary' : ''
-          }`}
-        >
-          <Bookmark
-            className="size-5"
-            fill={post.savedByMe ? 'currentColor' : 'none'}
-          />
-        </button>
-        <button className="hover:text-foreground transition-colors">
-          <Share className="size-5" />
-        </button>
-        <button className="hover:text-foreground transition-colors">
-          <Ellipsis className="size-5" />
-        </button>
+        <div className="flex w-[20%] items-center justify-between gap-2">
+          <button
+            onClick={() => setSave(post.id, !post.savedByMe)}
+            className={`hover:text-foreground transition-colors ${
+              post.savedByMe ? 'text-primary' : ''
+            }`}
+          >
+            <Bookmark
+              className="size-5"
+              fill={post.savedByMe ? 'currentColor' : 'none'}
+            />
+          </button>
+          <button className="hover:text-foreground transition-colors">
+            <Share className="size-5" />
+          </button>
+          <PostCardMenu post={post} />
+        </div>
       </div>
     </article>
   );

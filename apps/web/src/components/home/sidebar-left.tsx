@@ -34,7 +34,9 @@ import {
   User,
 } from 'lucide-react';
 
-const navItems = [
+// Everything up to "Profile" — Profile links to the signed-in user's own
+// profile (/profile/$userId), so it's rendered separately from this list.
+const navItemsBeforeProfile = [
   { label: 'Home', icon: Home, to: '/' },
   { label: 'Explore', icon: Search, to: '/search' },
   { label: 'Notifications', icon: Bell, to: '/notifications' },
@@ -42,7 +44,9 @@ const navItems = [
   { label: 'Feeds', icon: Hash, to: '/' },
   { label: 'Lists', icon: List, to: '/' },
   { label: 'Saved', icon: Bookmark, to: '/saved' },
-  { label: 'Profile', icon: User, to: '/profile' },
+] as const;
+
+const navItemsAfterProfile = [
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
 
@@ -133,7 +137,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
     <nav className="flex flex-col gap-1">
       <AccountChip user={user} />
 
-      {navItems.map(({ label, icon: Icon, to }) => (
+      {navItemsBeforeProfile.map(({ label, icon: Icon, to }) => (
         <Link
           key={label}
           to={to}
@@ -141,8 +145,52 @@ function LoggedInNav({ user }: { user: AccountUser }) {
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >
-          <Icon className="size-6" />
-          {label}
+          {({ isActive }) => (
+            <>
+              <Icon
+                className="size-6"
+                fill={isActive ? 'currentColor' : 'none'}
+              />
+              {label}
+            </>
+          )}
+        </Link>
+      ))}
+
+      <Link
+        to="/profile/$userId"
+        params={{ userId: user.id }}
+        className="hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors"
+        activeProps={{ className: 'font-bold' }}
+      >
+        {({ isActive }) => (
+          <>
+            <User
+              className="size-6"
+              fill={isActive ? 'currentColor' : 'none'}
+            />
+            Profile
+          </>
+        )}
+      </Link>
+
+      {navItemsAfterProfile.map(({ label, icon: Icon, to }) => (
+        <Link
+          key={label}
+          to={to}
+          className="hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors"
+          activeProps={{ className: 'font-bold' }}
+          activeOptions={{ exact: true }}
+        >
+          {({ isActive }) => (
+            <>
+              <Icon
+                className="size-6"
+                fill={isActive ? 'currentColor' : 'none'}
+              />
+              {label}
+            </>
+          )}
         </Link>
       ))}
 
