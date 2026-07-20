@@ -1,21 +1,55 @@
+import { useState } from 'react';
 import { imageKitUrl } from '@/lib/imagekit';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetSave } from '@/lib/use-set-save';
+import { useDeletePost } from '@/lib/use-delete-post';
+import { authClient } from '@/lib/auth-client';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { formatCount, timeAgo } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
 
 import {
   Bookmark,
+  Clipboard,
   Ellipsis,
+  EyeOff,
+  Filter,
+  Flag,
+  Frown,
   Heart,
+  Languages,
   MessageCircle,
+  Pin,
   Repeat2,
+  Settings,
   Share,
+  Smile,
+  Trash2,
+  UserX,
+  VolumeX,
 } from 'lucide-react';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@yapper/ui/components/dropdown-menu';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@yapper/ui/components/dialog';
+import { Button } from '@yapper/ui/components/button';
 
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
@@ -35,7 +69,24 @@ export function PostCard({
   const navigate = useNavigate();
   const setLike = useSetLike();
   const setSave = useSetSave();
+  const deletePost = useDeletePost();
+  const { data: session } = authClient.useSession();
+  const isOwnPost = session?.user.id === post.author.id;
   const handle = post.author.username ?? 'unknown';
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deletePost(post.id);
+      setDeleteOpen(false);
+    } catch {
+      // useDeletePost already surfaces a toast on error
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <article
@@ -168,13 +219,115 @@ export function PostCard({
               <button className="hover:text-foreground transition-colors">
                 <Share className="size-4" />
               </button>
-              <button className="hover:text-foreground transition-colors">
-                <Ellipsis className="size-4" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-foreground transition-colors outline-none"
+                >
+                  <Ellipsis className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {isOwnPost && (
+                    <DropdownMenuItem>
+                      <Pin /> Pin to your profile
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem>
+                    <Languages /> Translate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      navigator.clipboard.writeText(post.content);
+                      toast.success('Post text copied');
+                    }}
+                  >
+                    <Clipboard /> Copy post text
+                  </DropdownMenuItem>
+                  {!isOwnPost && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Smile /> Show more like this
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Frown /> Show less like this
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <VolumeX /> Mute thread
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Filter /> Mute words & tags
+                  </DropdownMenuItem>
+                  {!isOwnPost && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <EyeOff /> Hide post for me
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <VolumeX /> Mute account
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive">
+                        <UserX /> Block account
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive">
+                        <Flag /> Report post
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {isOwnPost && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Settings /> Edit interaction settings
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDeleteOpen(true)}
+                      >
+                        <Trash2 /> Delete post
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
       </div>
+
+      {isOwnPost && (
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Delete post?</DialogTitle>
+              <DialogDescription>
+                This can't be undone and it will be removed from your profile,
+                the timeline, and any replies to it.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>
+                Cancel
+              </DialogClose>
+              <Button
+                variant="destructive"
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </article>
   );
 }

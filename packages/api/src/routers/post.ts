@@ -554,4 +554,34 @@ export const postRouter = router({
 
       return { liked: input.liked };
     }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = createDb();
+
+      const [deleted] = await db
+        .delete(post)
+        .where(
+          and(eq(post.id, input.id), eq(post.authorId, ctx.session.user.id)),
+        )
+        .returning({ id: post.id, replyToPostId: post.replyToPostId });
+
+      if (!deleted) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
+      }
+
+      if (deleted.replyToPostId) {
+        await db
+          .update(post)
+          .set({ replyCount: sql`GREATEST(${post.replyCount} - 1, 0)` })
+          .where(eq(post.id, deleted.replyToPostId));
+      }
+      await db
+        .update(userStats)
+        .set({ postCount: sql`GREATEST(${userStats.postCount} - 1, 0)` })
+        .where(eq(userStats.userId, ctx.session.user.id));
+
+      return { id: deleted.id };
+    }),
 });
