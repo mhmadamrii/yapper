@@ -42,7 +42,7 @@ const navItemsBeforeProfile = [
   { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Chat', icon: MessageCircle, to: '/messages' },
   { label: 'Feeds', icon: Hash, to: '/' },
-  { label: 'Lists', icon: List, to: '/' },
+  { label: 'Drafts', icon: List, to: '/drafts' },
   { label: 'Saved', icon: Bookmark, to: '/saved' },
 ] as const;
 

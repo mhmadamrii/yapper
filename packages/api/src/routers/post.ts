@@ -20,7 +20,7 @@ import {
   sql,
 } from 'drizzle-orm';
 
-const mediaInput = z.object({
+export const mediaInput = z.object({
   fileId: z.string().min(1),
   filePath: z.string().min(1),
   width: z.number().int().positive(),
@@ -29,6 +29,84 @@ const mediaInput = z.object({
   bytes: z.number().int().positive(),
   altText: z.string().max(1000).optional(),
 });
+
+// Shared by post.create and draft.publish (converting a draft into a real
+// post) — Neon HTTP driver has no interactive transactions, so the caller
+// runs this via db.batch for atomicity.
+export function buildPostInsertStatements(
+  db: ReturnType<typeof createDb>,
+  args: {
+    postId: string;
+    authorId: string;
+    content: string;
+    media: Array<{
+      fileId: string;
+      filePath: string;
+      width: number;
+      height: number;
+      format: string;
+      bytes: number;
+      altText?: string;
+    }>;
+    replyToPostId?: string;
+  },
+) {
+  const insertPost = db.insert(post).values({
+    id: args.postId,
+    authorId: args.authorId,
+    content: args.content,
+    replyToPostId: args.replyToPostId,
+  });
+
+  const extras = [];
+  if (args.media.length > 0) {
+    extras.push(
+      db.insert(postMedia).values(
+        args.media.map((m, i) => ({
+          postId: args.postId,
+          fileId: m.fileId,
+          filePath: m.filePath,
+          width: m.width,
+          height: m.height,
+          format: m.format,
+          bytes: m.bytes,
+          altText: m.altText,
+          position: i,
+        })),
+      ),
+    );
+  }
+  if (args.replyToPostId) {
+    extras.push(
+      db
+        .update(post)
+        .set({ replyCount: sql`${post.replyCount} + 1` })
+        .where(eq(post.id, args.replyToPostId)),
+    );
+  }
+  // Denormalized per-user post count; stats row created lazily.
+  extras.push(
+    db
+      .insert(userStats)
+      .values({ userId: args.authorId, postCount: 1 })
+      .onConflictDoUpdate({
+        target: userStats.userId,
+        set: { postCount: sql`${userStats.postCount} + 1` },
+      }),
+  );
+
+  return [insertPost, ...extras] as const;
+}
+
+// Non-personalized "hot" ranking for the global feed: log-dampened
+// engagement (so viral posts don't dominate forever) minus a linear
+// time-decay penalty (so freshness always eventually wins). Computed at
+// read time from existing denormalized counters — no precompute, no cron.
+// Higher RANK_TIME_DECAY_HOURS = engagement matters more relative to age.
+const RANK_TIME_DECAY_HOURS = 12;
+const postAgeHours = sql`extract(epoch from (now() - ${post.createdAt})) / 3600.0`;
+const postEngagement = sql`(${post.likeCount} + ${post.repostCount} + ${post.replyCount})`;
+const rankScore = sql<number>`ln(1 + ${postEngagement}) - (${postAgeHours}) / ${RANK_TIME_DECAY_HOURS}`;
 
 // One IN-query each per page for the viewer's likes/saves — never a
 // per-post lookup.
@@ -130,9 +208,12 @@ export const postRouter = router({
     .input(
       z.object({
         limit: z.number().int().min(1).max(50).default(20),
-        // Keyset cursor: (createdAt, id) of the last item of the previous
-        // page — never OFFSET.
-        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
+        // Keyset cursor: (score, id) of the last item of the previous
+        // page — never OFFSET. Score is computed at read time (see
+        // rankScore above), so this pagination is only approximately
+        // stable across requests (the same trade-off HN/Reddit's "hot"
+        // ranking makes) — acceptable drift for a social feed.
+        cursor: z.object({ score: z.number(), id: z.string() }).nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -143,51 +224,68 @@ export const postRouter = router({
         ctx.session?.user.id,
       );
 
-      const rows = await db.query.post.findMany({
-        // Top-level posts only — replies live on the post detail page.
-        where: and(
-          isNull(post.replyToPostId),
-          feedExcluded.size > 0
-            ? notInArray(post.authorId, [...feedExcluded])
-            : undefined,
-          cursor
-            ? or(
-                lt(post.createdAt, new Date(cursor.createdAt)),
-                and(
-                  eq(post.createdAt, new Date(cursor.createdAt)),
-                  lt(post.id, cursor.id),
-                ),
-              )
-            : undefined,
-        ),
-        orderBy: [desc(post.createdAt), desc(post.id)],
-        limit: input.limit + 1,
-        with: {
-          author: {
-            columns: {
-              id: true,
-              name: true,
-              username: true,
-              displayUsername: true,
-              emailVerified: true,
-              image: true,
-            },
-          },
-          media: {
-            orderBy: (media, { asc }) => [asc(media.position)],
-          },
-        },
-      });
+      // Phase 1: rank. A computed expression can't reliably drive `where`
+      // and `orderBy` through the relational query builder, so rank with
+      // a plain select first, then hydrate relations in phase 2 — same
+      // two-phase shape as pageEngagedPosts above.
+      const rankedRows = await db
+        .select({ id: post.id, score: rankScore })
+        .from(post)
+        .where(
+          and(
+            isNull(post.replyToPostId),
+            feedExcluded.size > 0
+              ? notInArray(post.authorId, [...feedExcluded])
+              : undefined,
+            cursor
+              ? or(
+                  sql`${rankScore} < ${cursor.score}`,
+                  and(
+                    sql`${rankScore} = ${cursor.score}`,
+                    lt(post.id, cursor.id),
+                  ),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(sql`${rankScore} desc`, desc(post.id))
+        .limit(input.limit + 1);
 
-      let nextCursor: { createdAt: string; id: string } | null = null;
-      if (rows.length > input.limit) {
-        rows.pop();
-        const last = rows[rows.length - 1]!;
-        nextCursor = {
-          createdAt: last.createdAt.toISOString(),
-          id: last.id,
-        };
+      let nextCursor: { score: number; id: string } | null = null;
+      if (rankedRows.length > input.limit) {
+        rankedRows.pop();
+        const last = rankedRows[rankedRows.length - 1]!;
+        nextCursor = { score: last.score, id: last.id };
       }
+
+      // Phase 2: hydrate relations, then restore rank order (IN-queries
+      // don't preserve input order).
+      const ids = rankedRows.map((row) => row.id);
+      const posts =
+        ids.length === 0
+          ? []
+          : await db.query.post.findMany({
+              where: inArray(post.id, ids),
+              with: {
+                author: {
+                  columns: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    displayUsername: true,
+                    emailVerified: true,
+                    image: true,
+                  },
+                },
+                media: {
+                  orderBy: (media, { asc }) => [asc(media.position)],
+                },
+              },
+            });
+      const byId = new Map(posts.map((row) => [row.id, row]));
+      const rows = ids
+        .map((id) => byId.get(id))
+        .filter((row): row is NonNullable<typeof row> => row != null);
 
       const engagement = await viewerEngagement(
         db,
@@ -361,55 +459,15 @@ export const postRouter = router({
         }
       }
 
-      const statements = [
-        db.insert(post).values({
-          id: postId,
+      await db.batch(
+        buildPostInsertStatements(db, {
+          postId,
           authorId: ctx.session.user.id,
           content: input.content,
+          media: input.media,
           replyToPostId: input.replyToPostId,
         }),
-      ] as const;
-
-      // Neon HTTP driver has no interactive transactions; batch executes
-      // all statements atomically in a single request.
-      const extras = [];
-      if (input.media.length > 0) {
-        extras.push(
-          db.insert(postMedia).values(
-            input.media.map((m, i) => ({
-              postId,
-              fileId: m.fileId,
-              filePath: m.filePath,
-              width: m.width,
-              height: m.height,
-              format: m.format,
-              bytes: m.bytes,
-              altText: m.altText,
-              position: i,
-            })),
-          ),
-        );
-      }
-      if (input.replyToPostId) {
-        extras.push(
-          db
-            .update(post)
-            .set({ replyCount: sql`${post.replyCount} + 1` })
-            .where(eq(post.id, input.replyToPostId)),
-        );
-      }
-      // Denormalized per-user post count; stats row created lazily.
-      extras.push(
-        db
-          .insert(userStats)
-          .values({ userId: ctx.session.user.id, postCount: 1 })
-          .onConflictDoUpdate({
-            target: userStats.userId,
-            set: { postCount: sql`${userStats.postCount} + 1` },
-          }),
       );
-
-      await db.batch([statements[0], ...extras]);
 
       return { id: postId };
     }),
