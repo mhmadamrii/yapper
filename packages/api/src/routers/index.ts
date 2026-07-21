@@ -1,11 +1,13 @@
 import { protectedProcedure, publicProcedure, router } from '../index';
 import { mediaRouter } from './media';
 import { postRouter } from './post';
+import { socialRouter } from './social';
 import { userRouter } from './user';
 
 export const appRouter = router({
   media: mediaRouter,
   post: postRouter,
+  social: socialRouter,
   user: userRouter,
   healthCheck: publicProcedure.query(() => {
     return 'OK';

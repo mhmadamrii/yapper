@@ -7,6 +7,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 
+import { authRateLimit } from './middleware/rate-limit';
+
 const app = new Hono();
 
 app.use(logger());
@@ -20,6 +22,7 @@ app.use(
   }),
 );
 
+app.use('/api/auth/*', authRateLimit);
 app.on(['POST', 'GET'], '/api/auth/*', (c) => createAuth().handler(c.req.raw));
 
 app.use(

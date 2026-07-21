@@ -6,6 +6,7 @@ import { userProfile } from '@yapper/db/schema/profile';
 import { follow, userStats } from '@yapper/db/schema/social';
 import { z } from 'zod';
 
+import { getViewerExclusions } from '../lib/social-filters';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
 export const userRouter = router({
@@ -14,6 +15,11 @@ export const userRouter = router({
     .query(async ({ ctx, input }) => {
       const db = createDb();
       const viewerId = ctx.session?.user.id;
+
+      const { blocked } = await getViewerExclusions(db, viewerId);
+      if (blocked.has(input.id)) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
 
       const [found, stats, profile, followRows] = await Promise.all([
         db.query.user.findFirst({
@@ -107,6 +113,14 @@ export const userRouter = router({
       }
 
       if (input.followed) {
+        const { blocked } = await getViewerExclusions(db, followerId);
+        if (blocked.has(input.userId)) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: "You can't follow this user",
+          });
+        }
+
         // Composite PK makes double-follows a no-op; only a real insert
         // touches the denormalized counters.
         const inserted = await db

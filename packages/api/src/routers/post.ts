@@ -4,6 +4,7 @@ import { like, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
 import { follow, userStats } from '@yapper/db/schema/social';
 import { z } from 'zod';
+import { getViewerExclusions } from '../lib/social-filters';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
 import {
@@ -14,6 +15,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  notInArray,
   or,
   sql,
 } from 'drizzle-orm';
@@ -136,11 +138,18 @@ export const postRouter = router({
     .query(async ({ ctx, input }) => {
       const db = createDb();
       const cursor = input.cursor;
+      const { feedExcluded } = await getViewerExclusions(
+        db,
+        ctx.session?.user.id,
+      );
 
       const rows = await db.query.post.findMany({
         // Top-level posts only — replies live on the post detail page.
         where: and(
           isNull(post.replyToPostId),
+          feedExcluded.size > 0
+            ? notInArray(post.authorId, [...feedExcluded])
+            : undefined,
           cursor
             ? or(
                 lt(post.createdAt, new Date(cursor.createdAt)),
@@ -270,11 +279,19 @@ export const postRouter = router({
       }
 
       const viewerId = ctx.session?.user.id;
+      const { blocked, feedExcluded } = await getViewerExclusions(db, viewerId);
+      if (blocked.has(found.authorId)) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
+      }
+      const visibleReplies = found.replies.filter(
+        (reply) => !feedExcluded.has(reply.authorId),
+      );
+
       const [engagement, followRows] = await Promise.all([
         viewerEngagement(db, viewerId, [
           found.id,
           ...(found.replyTo ? [found.replyTo.id] : []),
-          ...found.replies.map((reply) => reply.id),
+          ...visibleReplies.map((reply) => reply.id),
         ]),
         // Whether the viewer follows the post's author — drives the
         // Follow button on the detail page.
@@ -304,7 +321,7 @@ export const postRouter = router({
               savedByMe: engagement.saved.has(found.replyTo.id),
             }
           : null,
-        replies: found.replies.map((reply) => ({
+        replies: visibleReplies.map((reply) => ({
           ...reply,
           likedByMe: engagement.liked.has(reply.id),
           savedByMe: engagement.saved.has(reply.id),
@@ -323,6 +340,26 @@ export const postRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = createDb();
       const postId = crypto.randomUUID();
+
+      if (input.replyToPostId) {
+        const parent = await db.query.post.findFirst({
+          where: eq(post.id, input.replyToPostId),
+          columns: { authorId: true },
+        });
+        if (!parent) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Post not found',
+          });
+        }
+        const { blocked } = await getViewerExclusions(db, ctx.session.user.id);
+        if (blocked.has(parent.authorId)) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: "You can't reply to this post",
+          });
+        }
+      }
 
       const statements = [
         db.insert(post).values({
@@ -391,6 +428,11 @@ export const postRouter = router({
     .query(async ({ ctx, input }) => {
       const db = createDb();
       const { userId, tab, limit, cursor } = input;
+
+      const { blocked } = await getViewerExclusions(db, ctx.session?.user.id);
+      if (blocked.has(userId)) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
 
       let rows: Awaited<ReturnType<typeof fetchAuthored>>;
       let nextCursor: { createdAt: string; id: string } | null = null;

@@ -1,5 +1,5 @@
 import alchemy from 'alchemy';
-import { Worker } from 'alchemy/cloudflare';
+import { RateLimit, Worker } from 'alchemy/cloudflare';
 import { config } from 'dotenv';
 
 config({ path: './.env' });
@@ -19,6 +19,10 @@ export const server = await Worker('server', {
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
     IMAGEKIT_PUBLIC_KEY: alchemy.env.IMAGEKIT_PUBLIC_KEY!,
     IMAGEKIT_PRIVATE_KEY: alchemy.secret.env.IMAGEKIT_PRIVATE_KEY!,
+    RATE_LIMITER: RateLimit({
+      namespace_id: 1001,
+      simple: { limit: 10, period: 60 },
+    }),
   },
   dev: {
     port: 3000,
