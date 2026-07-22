@@ -1,103 +1,151 @@
-# yapper
+# Yapper
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Start, Hono, TRPC, and more.
+Portfolio social media app in the spirit of X / Bluesky.
 
-## Features
+Not another CRUD clone — each feature replicates a **hard problem** big platforms (X, Facebook, Instagram, Bluesky) already solved, implemented properly at portfolio scale. Depth over breadth: a small number of features done "the real way" beats many shallow ones.
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Start** - SSR framework with TanStack Router
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Hono** - Lightweight, performant server framework
-- **tRPC** - End-to-end type-safe APIs
-- **workers** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Turborepo** - Optimized monorepo build system
+## Problem areas being replicated
+
+- **Timeline / feed** — cursor-based (keyset) pagination, never `OFFSET`. Fan-out-on-write vs fan-out-on-read trade-off explicit in the follow feed design.
+- **Engagement counters** (likes, reposts, replies) — denormalized counts with atomic increments, not `COUNT(*)` per render.
+- **Optimistic UI** — mutations (like, repost, follow) update the TanStack Query cache immediately, roll back on error.
+- **Social graph** — follows, blocks, mutes, enforced in feed/reply queries server-side, not just hidden client-side.
+- **Notifications** — aggregated ("X and 3 others liked your post"), read/unread state.
+- **Rate limiting & anti-spam** — per-user limits on writes at the API layer.
+- **Media pipeline** — direct-to-storage uploads (presigned), size/type validation, responsive variants.
+- **Search** — Postgres full-text search over posts/users before reaching for external engines.
+- **Real-time** — polling/`refetchInterval` first, upgrade to SSE/websockets where it matters.
+
+## Stack
+
+- **TypeScript** end to end
+- **TanStack Start** — SSR framework with TanStack Router (React 19, Vite 8)
+- **Hono** — server framework, tRPC + better-auth handlers
+- **tRPC** — end-to-end type-safe APIs
+- **Drizzle ORM** + **PostgreSQL** (Neon serverless)
+- **better-auth** — authentication
+- **TailwindCSS** + shared shadcn/ui primitives
+- **pnpm workspaces + Turborepo** — monorepo
+
+## Monorepo layout
+
+| Path              | Package          | What it is                                                                                                      |
+| ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| `apps/web`        | `web`            | TanStack Start (React 19, Vite 8, file-based routing), port 3001, deploys to Vercel                             |
+| `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys to Cloudflare Workers                                    |
+| `packages/api`    | `@yapper/api`    | tRPC init, context, and routers (`src/routers/`)                                                                |
+| `packages/auth`   | `@yapper/auth`   | better-auth setup (`createAuth()`)                                                                              |
+| `packages/db`     | `@yapper/db`     | Drizzle ORM + Neon serverless Postgres; schema in `src/schema/`, `createDb()` factory                           |
+| `packages/env`    | `@yapper/env`    | t3-env validated env vars — import from `@yapper/env/server` or `@yapper/env/web`, never `process.env` directly |
+| `packages/ui`     | `@yapper/ui`     | Shared shadcn/base-ui components, Tailwind 4, `globals.css`                                                     |
+| `packages/infra`  | `@yapper/infra`  | Alchemy IaC for the Cloudflare side                                                                             |
+| `packages/config` | `@yapper/config` | Shared tsconfig                                                                                                 |
+
+Dependency versions are pinned in the `catalog:` section of `pnpm-workspace.yaml` — add shared deps there, reference with `"catalog:"`.
 
 ## Getting Started
-
-First, install the dependencies:
 
 ```bash
 pnpm install
 ```
 
-## Database Setup
+### Database setup
 
-This project uses PostgreSQL with Drizzle ORM.
+Project uses PostgreSQL (Neon) with Drizzle ORM.
 
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
-
-```bash
-pnpm run db:push
-```
-
-Then, run the development server:
+1. Set up a PostgreSQL database.
+2. Update `apps/server/.env` with your connection details.
+3. Push schema:
 
 ```bash
-pnpm run dev
+pnpm db:push
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+### Run dev
+
+```bash
+pnpm dev
+```
+
+- Web: [http://localhost:3001](http://localhost:3001)
+- API: [http://localhost:3000](http://localhost:3000)
+
+## Commands (run from repo root)
+
+```bash
+pnpm dev             # all apps via turbo
+pnpm dev:web         # web only (port 3001)
+pnpm dev:server      # server only
+pnpm build
+pnpm check-types     # tsc across workspaces
+pnpm format          # prettier --write
+
+pnpm db:push         # drizzle-kit push (dev schema sync)
+pnpm db:generate     # generate migrations
+pnpm db:migrate
+pnpm db:studio
+
+pnpm deploy:web:prod # Vercel prod deploy
+pnpm deploy:server   # Alchemy deploy to Cloudflare
+```
+
+## Conventions
+
+- **tRPC** — add routers under `packages/api/src/routers/`, merge into `appRouter` in `routers/index.ts`. Use `publicProcedure` / `protectedProcedure` from `packages/api/src/index.ts`; `protectedProcedure` guarantees `ctx.session`.
+- **DB** — one schema file per domain in `packages/db/src/schema/`, re-exported from `schema/index.ts`. Get a client via `createDb()` (per-request, Neon HTTP driver — no long-lived pool).
+- **Web routes** — file-based under `apps/web/src/routes/`. `routeTree.gen.ts` is generated — never edit by hand. Authed routes live under `routes/_auth/`.
+- **Data fetching (web)** — tRPC client via `apps/web/src/utils/trpc.ts` + TanStack Query.
+- **Conditional rendering (web)** — use SolidJS-style components from `apps/web/src/components/control-flow.tsx`: `<Show when={...}>`, `<Switch>`/`<Match>`, `<For each={...}>`. Prefer these over `&&`, nested ternaries, bare `.map()` in JSX.
+- **Auth** — better-auth; server mounts at `/api/auth/*`; web client in `apps/web/src/lib/auth-client.ts`.
+- **Vite gotcha** — `ssr.noExternal: true` must stay build-only (see `apps/web/vite.config.ts`). Enabling in dev makes the module runner evaluate CJS deps as ESM → crashes with `module is not defined`.
+- New workspace packages: `"type": "module"`, export raw TS from `src/` via the `exports` map (no build step for internal packages).
 
 ## UI Customization
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
+Shared shadcn/ui primitives live in `packages/ui`.
 
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
+- Design tokens / global styles: `packages/ui/src/styles/globals.css`
+- Shared primitives: `packages/ui/src/components/*`
+- shadcn aliases / style config: `packages/ui/components.json` and `apps/web/components.json`
 
-### Add more shared components
-
-Run this from the project root to add more primitives to the shared UI package:
+Add more shared components (run from repo root):
 
 ```bash
 npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
 ```
 
-Import shared components like this:
+Import shared components:
 
 ```tsx
 import { Button } from '@yapper/ui/components/button';
 ```
 
-### Add app-specific blocks
-
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
+App-specific blocks (not shared): run the shadcn CLI from `apps/web` instead.
 
 ## Deployment
 
-### Cloudflare via Alchemy
+### Server → Cloudflare via Alchemy
 
-- Target: server
-- Dev: pnpm run dev
-- Deploy: pnpm run deploy:server
-- Destroy: pnpm run destroy
+- Dev: `pnpm dev:server`
+- Deploy: `pnpm deploy:server`
+- Destroy: `pnpm destroy`
 
-For more details, see the guide on [Deploying to Cloudflare with Alchemy](https://www.better-t-stack.dev/docs/guides/cloudflare-alchemy).
+Guide: [Deploying to Cloudflare with Alchemy](https://www.better-t-stack.dev/docs/guides/cloudflare-alchemy)
 
-### Vercel Services
+### Web → Vercel
 
-- Target: web
 - Config: `vercel.json`
-- Link the project first: pnpm run deploy:setup
-- Local Vercel dev: pnpm run dev:vercel
-- Sync preview env: pnpm run env:preview
-- Sync production env: pnpm run env:production
-- Dry-run check (no upload): pnpm run deploy:check
-- Preview deploy: pnpm run deploy:web
-- Production deploy: pnpm run deploy:web:prod
-  Vercel Services share project environment variables, but deploys do not upload local `.env` files automatically. Link the project with `vercel link`, then run the env sync command before your first deploy (otherwise the deployment starts with no env vars), or pass one-off envs with `vercel deploy -e KEY=value`.
-  Pass Vercel CLI flags to the env sync command directly, for example: `pnpm run env:production --scope your-team`.
+- Link project first: `pnpm deploy:setup`
+- Local Vercel dev: `pnpm dev:vercel`
+- Sync preview env: `pnpm env:preview`
+- Sync production env: `pnpm env:production`
+- Dry-run check (no upload): `pnpm deploy:check`
+- Preview deploy: `pnpm deploy:web`
+- Production deploy: `pnpm deploy:web:prod`
 
-For more details, see the guide on [Deploying to Vercel](https://www.better-t-stack.dev/docs/guides/vercel).
+Vercel shares project env vars, but deploys don't upload local `.env` files automatically. Link with `vercel link`, then sync env before first deploy (else deploy starts with no env vars), or pass one-off envs with `vercel deploy -e KEY=value`. Pass Vercel CLI flags to env sync commands directly, e.g. `pnpm env:production --scope your-team`.
+
+Guide: [Deploying to Vercel](https://www.better-t-stack.dev/docs/guides/vercel)
 
 ## Project Structure
 
@@ -105,29 +153,27 @@ For more details, see the guide on [Deploying to Vercel](https://www.better-t-st
 yapper/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Start)
-│   └── server/      # Backend API (Hono, TRPC)
+│   └── server/      # Backend API (Hono, tRPC)
 ├── packages/
 │   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
+│   ├── api/         # tRPC routers / business logic
 │   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── db/          # Database schema & queries
+│   ├── env/         # Validated env vars
+│   ├── infra/       # Alchemy IaC (Cloudflare)
+│   └── config/      # Shared tsconfig
 ```
 
 ## Available Scripts
 
-- `pnpm run dev`: Start all applications in development mode
-- `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
-- `pnpm run dev:server`: Start only the server
-- `pnpm run check-types`: Check TypeScript types across all apps
-- `pnpm run db:push`: Push schema changes to database
-- `pnpm run db:generate`: Generate database client/types
-- `pnpm run db:migrate`: Run database migrations
-- `pnpm run db:studio`: Open database studio UI
-- `pnpm run deploy:setup`: Link this repo to a Vercel project (first-time setup)
-- `pnpm run dev:vercel`: Run the Vercel Services dev environment locally
-- `pnpm run env:preview`: Sync local env files to the Vercel preview environment
-- `pnpm run env:production`: Sync local env files to the Vercel production environment
-- `pnpm run deploy:web`: Create a Vercel preview deployment
-- `pnpm run deploy:web:prod`: Deploy to Vercel production
-- `pnpm run deploy:check`: Dry-run a deploy to preview framework detection and included files without uploading
+- `pnpm dev` — start all apps
+- `pnpm build` — build all apps
+- `pnpm dev:web` / `pnpm dev:server` — start one app
+- `pnpm check-types` — tsc across workspaces
+- `pnpm format` — prettier --write
+- `pnpm db:push` / `db:generate` / `db:migrate` / `db:studio`
+- `pnpm deploy:setup` — link repo to Vercel project (first-time)
+- `pnpm dev:vercel` — run Vercel Services dev env locally
+- `pnpm env:preview` / `env:production` — sync env to Vercel
+- `pnpm deploy:web` / `deploy:web:prod` — Vercel preview/prod deploy
+- `pnpm deploy:check` — dry-run deploy check
