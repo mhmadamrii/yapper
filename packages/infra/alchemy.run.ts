@@ -2,8 +2,10 @@ import alchemy from 'alchemy';
 import { RateLimit, Worker } from 'alchemy/cloudflare';
 import { config } from 'dotenv';
 
+const isProd = process.env.SERVER_ENV === 'production';
+
 config({ path: './.env' });
-config({ path: '../../apps/server/.env' });
+config({ path: `../../apps/server/${isProd ? '.env.production' : '.env'}` });
 
 const app = await alchemy('yapper');
 
