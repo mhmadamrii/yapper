@@ -1,10 +1,11 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
-import { like, save } from '@yapper/db/schema/engagement';
+import { like, repost, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
 import { follow, userStats } from '@yapper/db/schema/social';
 import { z } from 'zod';
 import { getViewerExclusions } from '../lib/social-filters';
+import { notify } from '../lib/notifications';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
 import {
@@ -49,6 +50,7 @@ export function buildPostInsertStatements(
       altText?: string;
     }>;
     replyToPostId?: string;
+    quotedPostId?: string;
   },
 ) {
   const insertPost = db.insert(post).values({
@@ -56,6 +58,7 @@ export function buildPostInsertStatements(
     authorId: args.authorId,
     content: args.content,
     replyToPostId: args.replyToPostId,
+    quotedPostId: args.quotedPostId,
   });
 
   const extras = [];
@@ -84,6 +87,16 @@ export function buildPostInsertStatements(
         .where(eq(post.id, args.replyToPostId)),
     );
   }
+  // Quote posts count toward the quoted post's repostCount, same as
+  // X/Bluesky combine plain reposts and quotes into one count.
+  if (args.quotedPostId) {
+    extras.push(
+      db
+        .update(post)
+        .set({ repostCount: sql`${post.repostCount} + 1` })
+        .where(eq(post.id, args.quotedPostId)),
+    );
+  }
   // Denormalized per-user post count; stats row created lazily.
   extras.push(
     db
@@ -108,7 +121,7 @@ const postAgeHours = sql`extract(epoch from (now() - ${post.createdAt})) / 3600.
 const postEngagement = sql`(${post.likeCount} + ${post.repostCount} + ${post.replyCount})`;
 const rankScore = sql<number>`ln(1 + ${postEngagement}) - (${postAgeHours}) / ${RANK_TIME_DECAY_HOURS}`;
 
-// One IN-query each per page for the viewer's likes/saves — never a
+// One IN-query each per page for the viewer's likes/saves/reposts — never a
 // per-post lookup.
 async function viewerEngagement(
   db: ReturnType<typeof createDb>,
@@ -116,9 +129,13 @@ async function viewerEngagement(
   postIds: string[],
 ) {
   if (!userId || postIds.length === 0) {
-    return { liked: new Set<string>(), saved: new Set<string>() };
+    return {
+      liked: new Set<string>(),
+      saved: new Set<string>(),
+      reposted: new Set<string>(),
+    };
   }
-  const [likeRows, saveRows] = await Promise.all([
+  const [likeRows, saveRows, repostRows] = await Promise.all([
     db
       .select({ postId: like.postId })
       .from(like)
@@ -127,10 +144,15 @@ async function viewerEngagement(
       .select({ postId: save.postId })
       .from(save)
       .where(and(eq(save.userId, userId), inArray(save.postId, postIds))),
+    db
+      .select({ postId: repost.postId })
+      .from(repost)
+      .where(and(eq(repost.userId, userId), inArray(repost.postId, postIds))),
   ]);
   return {
     liked: new Set(likeRows.map((row) => row.postId)),
     saved: new Set(saveRows.map((row) => row.postId)),
+    reposted: new Set(repostRows.map((row) => row.postId)),
   };
 }
 
@@ -192,6 +214,23 @@ async function pageEngagedPosts(
             },
             media: {
               orderBy: (media, { asc }) => [asc(media.position)],
+            },
+            quotedPost: {
+              with: {
+                author: {
+                  columns: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    displayUsername: true,
+                    emailVerified: true,
+                    image: true,
+                  },
+                },
+                media: {
+                  orderBy: (media, { asc }) => [asc(media.position)],
+                },
+              },
             },
           },
         });
@@ -280,6 +319,23 @@ export const postRouter = router({
                 media: {
                   orderBy: (media, { asc }) => [asc(media.position)],
                 },
+                quotedPost: {
+                  with: {
+                    author: {
+                      columns: {
+                        id: true,
+                        name: true,
+                        username: true,
+                        displayUsername: true,
+                        emailVerified: true,
+                        image: true,
+                      },
+                    },
+                    media: {
+                      orderBy: (media, { asc }) => [asc(media.position)],
+                    },
+                  },
+                },
               },
             });
       const byId = new Map(posts.map((row) => [row.id, row]));
@@ -296,6 +352,7 @@ export const postRouter = router({
         ...row,
         likedByMe: engagement.liked.has(row.id),
         savedByMe: engagement.saved.has(row.id),
+        repostedByMe: engagement.reposted.has(row.id),
       }));
 
       return { items, nextCursor };
@@ -327,6 +384,24 @@ export const postRouter = router({
           media: {
             orderBy: (media, { asc }) => [asc(media.position)],
           },
+          // The embedded post, when this is a quote post.
+          quotedPost: {
+            with: {
+              author: {
+                columns: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  displayUsername: true,
+                  emailVerified: true,
+                  image: true,
+                },
+              },
+              media: {
+                orderBy: (media, { asc }) => [asc(media.position)],
+              },
+            },
+          },
           // Parent post, when this is a reply — the detail page renders it
           // above the focused post with a thread line.
           replyTo: {
@@ -343,6 +418,23 @@ export const postRouter = router({
               },
               media: {
                 orderBy: (media, { asc }) => [asc(media.position)],
+              },
+              quotedPost: {
+                with: {
+                  author: {
+                    columns: {
+                      id: true,
+                      name: true,
+                      username: true,
+                      displayUsername: true,
+                      emailVerified: true,
+                      image: true,
+                    },
+                  },
+                  media: {
+                    orderBy: (media, { asc }) => [asc(media.position)],
+                  },
+                },
               },
             },
           },
@@ -366,6 +458,23 @@ export const postRouter = router({
               },
               media: {
                 orderBy: (media, { asc }) => [asc(media.position)],
+              },
+              quotedPost: {
+                with: {
+                  author: {
+                    columns: {
+                      id: true,
+                      name: true,
+                      username: true,
+                      displayUsername: true,
+                      emailVerified: true,
+                      image: true,
+                    },
+                  },
+                  media: {
+                    orderBy: (media, { asc }) => [asc(media.position)],
+                  },
+                },
               },
             },
           },
@@ -412,17 +521,20 @@ export const postRouter = router({
         author: { ...found.author, followedByMe: followRows.length > 0 },
         likedByMe: engagement.liked.has(found.id),
         savedByMe: engagement.saved.has(found.id),
+        repostedByMe: engagement.reposted.has(found.id),
         replyTo: found.replyTo
           ? {
               ...found.replyTo,
               likedByMe: engagement.liked.has(found.replyTo.id),
               savedByMe: engagement.saved.has(found.replyTo.id),
+              repostedByMe: engagement.reposted.has(found.replyTo.id),
             }
           : null,
         replies: visibleReplies.map((reply) => ({
           ...reply,
           likedByMe: engagement.liked.has(reply.id),
           savedByMe: engagement.saved.has(reply.id),
+          repostedByMe: engagement.reposted.has(reply.id),
         })),
       };
     }),
@@ -433,12 +545,15 @@ export const postRouter = router({
         content: z.string().trim().min(1).max(300),
         media: z.array(mediaInput).max(4).default([]),
         replyToPostId: z.string().min(1).optional(),
+        quotedPostId: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const db = createDb();
       const postId = crypto.randomUUID();
+      const { blocked } = await getViewerExclusions(db, ctx.session.user.id);
 
+      let parentAuthorId: string | undefined;
       if (input.replyToPostId) {
         const parent = await db.query.post.findFirst({
           where: eq(post.id, input.replyToPostId),
@@ -450,13 +565,34 @@ export const postRouter = router({
             message: 'Post not found',
           });
         }
-        const { blocked } = await getViewerExclusions(db, ctx.session.user.id);
         if (blocked.has(parent.authorId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: "You can't reply to this post",
           });
         }
+        parentAuthorId = parent.authorId;
+      }
+
+      let quotedAuthorId: string | undefined;
+      if (input.quotedPostId) {
+        const quoted = await db.query.post.findFirst({
+          where: eq(post.id, input.quotedPostId),
+          columns: { authorId: true },
+        });
+        if (!quoted) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Post not found',
+          });
+        }
+        if (blocked.has(quoted.authorId)) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: "You can't quote this post",
+          });
+        }
+        quotedAuthorId = quoted.authorId;
       }
 
       await db.batch(
@@ -466,8 +602,26 @@ export const postRouter = router({
           content: input.content,
           media: input.media,
           replyToPostId: input.replyToPostId,
+          quotedPostId: input.quotedPostId,
         }),
       );
+
+      if (input.replyToPostId && parentAuthorId) {
+        await notify(db, {
+          recipientId: parentAuthorId,
+          actorId: ctx.session.user.id,
+          type: 'reply',
+          postId: input.replyToPostId,
+        });
+      }
+      if (input.quotedPostId && quotedAuthorId) {
+        await notify(db, {
+          recipientId: quotedAuthorId,
+          actorId: ctx.session.user.id,
+          type: 'repost',
+          postId: input.quotedPostId,
+        });
+      }
 
       return { id: postId };
     }),
@@ -528,6 +682,23 @@ export const postRouter = router({
             media: {
               orderBy: (media, { asc }) => [asc(media.position)],
             },
+            quotedPost: {
+              with: {
+                author: {
+                  columns: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    displayUsername: true,
+                    emailVerified: true,
+                    image: true,
+                  },
+                },
+                media: {
+                  orderBy: (media, { asc }) => [asc(media.position)],
+                },
+              },
+            },
           },
         });
       }
@@ -558,6 +729,7 @@ export const postRouter = router({
         ...row,
         likedByMe: engagement.liked.has(row.id),
         savedByMe: engagement.saved.has(row.id),
+        repostedByMe: engagement.reposted.has(row.id),
       }));
 
       return { items, nextCursor };
@@ -594,6 +766,7 @@ export const postRouter = router({
         ...row,
         likedByMe: engagement.liked.has(row.id),
         savedByMe: true,
+        repostedByMe: engagement.reposted.has(row.id),
       }));
 
       return { items, nextCursor };
@@ -634,10 +807,19 @@ export const postRouter = router({
           .onConflictDoNothing()
           .returning({ postId: like.postId });
         if (inserted.length > 0) {
-          await db
+          const [postRow] = await db
             .update(post)
             .set({ likeCount: sql`${post.likeCount} + 1` })
-            .where(eq(post.id, input.postId));
+            .where(eq(post.id, input.postId))
+            .returning({ authorId: post.authorId });
+          if (postRow) {
+            await notify(db, {
+              recipientId: postRow.authorId,
+              actorId: userId,
+              type: 'like',
+              postId: input.postId,
+            });
+          }
         }
       } else {
         const deleted = await db
@@ -653,6 +835,53 @@ export const postRouter = router({
       }
 
       return { liked: input.liked };
+    }),
+
+  setRepost: protectedProcedure
+    .input(z.object({ postId: z.string().min(1), reposted: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = createDb();
+      const userId = ctx.session.user.id;
+
+      if (input.reposted) {
+        // Composite PK makes double-reposts a no-op; only a real insert
+        // increments the denormalized counter.
+        const inserted = await db
+          .insert(repost)
+          .values({ userId, postId: input.postId })
+          .onConflictDoNothing()
+          .returning({ postId: repost.postId });
+        if (inserted.length > 0) {
+          const [postRow] = await db
+            .update(post)
+            .set({ repostCount: sql`${post.repostCount} + 1` })
+            .where(eq(post.id, input.postId))
+            .returning({ authorId: post.authorId });
+          if (postRow) {
+            await notify(db, {
+              recipientId: postRow.authorId,
+              actorId: userId,
+              type: 'repost',
+              postId: input.postId,
+            });
+          }
+        }
+      } else {
+        const deleted = await db
+          .delete(repost)
+          .where(
+            and(eq(repost.userId, userId), eq(repost.postId, input.postId)),
+          )
+          .returning({ postId: repost.postId });
+        if (deleted.length > 0) {
+          await db
+            .update(post)
+            .set({ repostCount: sql`GREATEST(${post.repostCount} - 1, 0)` })
+            .where(eq(post.id, input.postId));
+        }
+      }
+
+      return { reposted: input.reposted };
     }),
 
   delete: protectedProcedure

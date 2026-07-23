@@ -24,8 +24,18 @@ export const post = pgTable(
       (): AnyPgColumn => post.id,
       { onDelete: 'cascade' },
     ),
+    // A quote post: a new post embedding another one. Unlike replyToPostId,
+    // this is `set null` on delete — the quoting post's own text/media
+    // stands on its own, it just loses the embed (renders as unavailable)
+    // instead of being deleted with it.
+    quotedPostId: text('quoted_post_id').references(
+      (): AnyPgColumn => post.id,
+      { onDelete: 'set null' },
+    ),
     // Denormalized engagement counters — updated with atomic increments
     // alongside like/repost/reply writes, never recomputed via COUNT(*).
+    // repostCount covers both a plain repost and a quote post, same as
+    // X/Bluesky combine the two into one count.
     likeCount: integer('like_count').default(0).notNull(),
     repostCount: integer('repost_count').default(0).notNull(),
     replyCount: integer('reply_count').default(0).notNull(),
@@ -44,6 +54,7 @@ export const post = pgTable(
       table.id.desc(),
     ),
     index('post_replyTo_idx').on(table.replyToPostId),
+    index('post_quotedPost_idx').on(table.quotedPostId),
   ],
 );
 
@@ -86,6 +97,12 @@ export const postRelations = relations(post, ({ one, many }) => ({
     relationName: 'replies',
   }),
   replies: many(post, { relationName: 'replies' }),
+  quotedPost: one(post, {
+    fields: [post.quotedPostId],
+    references: [post.id],
+    relationName: 'quotes',
+  }),
+  quotedBy: many(post, { relationName: 'quotes' }),
   media: many(postMedia),
 }));
 

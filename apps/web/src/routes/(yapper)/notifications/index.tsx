@@ -1,122 +1,99 @@
 import { useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
+import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
+import { authClient } from '@/lib/auth-client';
+import { timeAgo } from '@/lib/utils';
+import { useTRPC } from '@/utils/trpc';
 
 import {
-  Bookmark,
-  ChevronDown,
-  CornerDownRight,
-  Ellipsis,
   Heart,
   MessageCircle,
   Repeat2,
   Settings,
-  Share,
   UserPlus,
 } from 'lucide-react';
+
+import type { AppRouter } from '@yapper/api/routers/index';
+import type { inferRouterOutputs } from '@trpc/server';
+
+type NotificationItem =
+  inferRouterOutputs<AppRouter>['notification']['list']['items'][number];
+
+const TABS = ['All', 'Mentions'] as const;
 
 export const Route = createFileRoute('/(yapper)/notifications/')({
   component: NotificationsPage,
 });
 
-// ---------------------------------------------------------------------------
-// Dummy data — layout preview only, until the notification API exists.
-// ---------------------------------------------------------------------------
-
-interface DummyActor {
-  name: string;
-  username: string;
-}
-
-type DummyNotification =
-  | {
-      id: string;
-      type: 'like';
-      actors: DummyActor[];
-      othersCount: number;
-      postSnippet: string;
-      date: string;
-    }
-  | {
-      id: string;
-      type: 'follow';
-      actors: DummyActor[];
-      othersCount: number;
-      date: string;
-    }
-  | {
-      id: string;
-      type: 'reply';
-      actor: DummyActor;
-      content: string;
-      date: string;
-      mention: boolean;
-    };
-
-const DUMMY_NOTIFICATIONS: DummyNotification[] = [
-  {
-    id: '1',
-    type: 'like',
-    actors: [
-      { name: 'Mira Dian', username: 'miradian.yapper' },
-      { name: 'Budi Santoso', username: 'budisan.yapper' },
-      { name: 'Citra Ayu', username: 'citraayu.yapper' },
-      { name: 'Dewa Putra', username: 'dewaputra.yapper' },
-      { name: 'Eka Sari', username: 'ekasari.yapper' },
-    ],
-    othersCount: 16,
-    postSnippet: 'hello world',
-    date: 'Jun 10, 2024',
-  },
-  {
-    id: '2',
-    type: 'reply',
-    actor: { name: 'qzzure', username: 'mamiculauw.yapper' },
-    content: 'hai',
-    date: 'Jun 10, 2024',
-    mention: true,
-  },
-  {
-    id: '3',
-    type: 'follow',
-    actors: [
-      { name: 'Fajar Nugroho', username: 'fajarn.yapper' },
-      { name: 'Gita Lestari', username: 'gitalestari.yapper' },
-    ],
-    othersCount: 3,
-    date: 'Jun 10, 2024',
-  },
-  {
-    id: '4',
-    type: 'reply',
-    actor: { name: 'adingga', username: 'adingga.yapper' },
-    content: 'hallo',
-    date: 'Jun 10, 2024',
-    mention: false,
-  },
-];
-
-const TABS = ['All', 'Mentions'] as const;
-
 function NotificationsPage() {
   const [activeTab, setActiveTab] = useState(0);
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+
+  const notificationsQuery = useInfiniteQuery(
+    trpc.notification.list.infiniteQueryOptions(
+      { limit: 20 },
+      {
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+        initialCursor: null,
+        enabled: !!session,
+      },
+    ),
+  );
+
+  const markRead = useMutation(trpc.notification.markRead.mutationOptions());
+  const markAllRead = useMutation(
+    trpc.notification.markAllRead.mutationOptions({
+      onSuccess: () => notificationsQuery.refetch(),
+    }),
+  );
 
   const notifications =
-    activeTab === 0
-      ? DUMMY_NOTIFICATIONS
-      : DUMMY_NOTIFICATIONS.filter((n) => n.type === 'reply' && n.mention);
+    notificationsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const hasUnread = notifications.some((n) => !n.readAt);
+
+  function handleRowClick(notification: NotificationItem) {
+    if (!notification.readAt) markRead.mutate({ id: notification.id });
+
+    if (notification.post) {
+      navigate({
+        to: '/post/$postId',
+        params: { postId: notification.post.id },
+      });
+    } else if (notification.actors[0]) {
+      navigate({
+        to: '/profile/$userId',
+        params: { userId: notification.actors[0].id },
+      });
+    }
+  }
 
   return (
     <main className="border-border min-h-svh w-full max-w-[640px] border-x">
       <header className="bg-background/80 border-border sticky top-0 z-10 border-b backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-lg font-bold">Notifications</h1>
-          <Button variant="ghost" size="icon-sm">
-            <Settings className="size-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Show when={hasUnread}>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={markAllRead.isPending}
+                onClick={() => markAllRead.mutate()}
+              >
+                Mark all read
+              </Button>
+            </Show>
+            <Button variant="ghost" size="icon-sm">
+              <Settings className="size-5" />
+            </Button>
+          </div>
         </div>
 
         <nav className="flex">
@@ -142,165 +119,141 @@ function NotificationsPage() {
         </nav>
       </header>
 
-      <For
-        each={notifications}
-        fallback={
+      <Switch>
+        <Match
+          when={sessionPending || (!!session && notificationsQuery.isPending)}
+        >
+          <FeedSkeleton />
+        </Match>
+
+        <Match when={!session}>
           <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-            Nothing here yet.
+            Sign in to see your notifications.
           </p>
-        }
-      >
-        {(notification) => (
-          <NotificationRow key={notification.id} notification={notification} />
-        )}
-      </For>
+        </Match>
+
+        <Match when={notificationsQuery.error}>
+          {(error) => (
+            <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+              Could not load notifications. {error.message}
+            </p>
+          )}
+        </Match>
+
+        {/* No mention parsing exists yet — the Mentions tab is a stub. */}
+        <Match when={activeTab === 1}>
+          <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+            Mentions are coming soon.
+          </p>
+        </Match>
+
+        <Match when={activeTab === 0}>
+          <For
+            each={notifications}
+            fallback={
+              <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+                Nothing here yet.
+              </p>
+            }
+          >
+            {(notification) => (
+              <NotificationRow
+                key={notification.id}
+                notification={notification}
+                onClick={() => handleRowClick(notification)}
+              />
+            )}
+          </For>
+
+          <Show when={notificationsQuery.hasNextPage}>
+            <div className="flex justify-center py-6">
+              <Button
+                variant="secondary"
+                className="rounded-full"
+                disabled={notificationsQuery.isFetchingNextPage}
+                onClick={() => notificationsQuery.fetchNextPage()}
+              >
+                {notificationsQuery.isFetchingNextPage
+                  ? 'Loading...'
+                  : 'Load more'}
+              </Button>
+            </div>
+          </Show>
+        </Match>
+      </Switch>
     </main>
   );
 }
 
+const TYPE_META = {
+  like: {
+    icon: <Heart className="size-6 fill-rose-500 text-rose-500" />,
+    action: 'liked your post',
+  },
+  repost: {
+    icon: <Repeat2 className="size-6 text-green-500" />,
+    action: 'reposted your post',
+  },
+  reply: {
+    icon: <MessageCircle className="text-primary size-6" />,
+    action: 'replied to your post',
+  },
+  follow: {
+    icon: <UserPlus className="text-primary size-6" />,
+    action: 'followed you',
+  },
+} as const;
+
 function NotificationRow({
   notification,
+  onClick,
 }: {
-  notification: DummyNotification;
+  notification: NotificationItem;
+  onClick: () => void;
 }) {
-  return (
-    <Switch>
-      <Match when={notification.type === 'like' && notification}>
-        {(n) => (
-          <AggregatedRow
-            icon={<Heart className="size-7 fill-rose-500 text-rose-500" />}
-            actors={n.actors}
-            othersCount={n.othersCount}
-            action="liked your post"
-            date={n.date}
-            snippet={n.postSnippet}
-          />
-        )}
-      </Match>
-
-      <Match when={notification.type === 'follow' && notification}>
-        {(n) => (
-          <AggregatedRow
-            icon={<UserPlus className="text-primary size-7" />}
-            actors={n.actors}
-            othersCount={n.othersCount}
-            action="followed you"
-            date={n.date}
-          />
-        )}
-      </Match>
-
-      <Match when={notification.type === 'reply' && notification}>
-        {(n) => <ReplyRow notification={n} />}
-      </Match>
-    </Switch>
-  );
-}
-
-function AggregatedRow({
-  icon,
-  actors,
-  othersCount,
-  action,
-  date,
-  snippet,
-}: {
-  icon: React.ReactNode;
-  actors: DummyActor[];
-  othersCount: number;
-  action: string;
-  date: string;
-  snippet?: string;
-}) {
-  const [first] = actors;
+  const { icon, action } = TYPE_META[notification.type];
+  const [first] = notification.actors;
+  const othersCount = notification.actorCount - 1;
 
   return (
-    <div className="border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors">
+    <div
+      onClick={onClick}
+      className={`border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors ${
+        notification.readAt ? '' : 'bg-primary/5'
+      }`}
+    >
       <div className="flex items-center gap-3">
-        <div className="flex w-10 shrink-0 justify-center">{icon}</div>
+        <div className="flex w-9 shrink-0 justify-center">{icon}</div>
         <div className="flex items-center gap-1.5">
-          <For each={actors}>
+          <For each={notification.actors}>
             {(actor) => (
               <UserAvatar
-                key={actor.username}
+                key={actor.id}
                 name={actor.name}
-                className="size-9"
+                image={actor.image}
+                className="size-8"
               />
             )}
           </For>
         </div>
-        <Show when={othersCount > actors.length}>
-          <button className="text-muted-foreground flex items-center gap-1 text-sm">
-            +{othersCount - actors.length + 1}
-            <ChevronDown className="size-4" />
-          </button>
-        </Show>
       </div>
 
-      <p className="pl-13 mt-2.5 text-[15px]">
-        <span className="font-bold">{first?.name}</span> and{' '}
-        <span className="font-bold">{othersCount} others</span> {action}{' '}
-        <span className="text-muted-foreground">· {date}</span>
+      <p className="pl-12 mt-2 text-[15px]">
+        <span className="font-bold">{first?.name ?? 'Someone'}</span>
+        <Show when={othersCount > 0}>
+          {' '}
+          and <span className="font-bold">{othersCount} others</span>
+        </Show>{' '}
+        {action}{' '}
+        <span className="text-muted-foreground">
+          · {timeAgo(notification.updatedAt)}
+        </span>
       </p>
-      <Show when={snippet}>
-        {(text) => <p className="text-muted-foreground pl-13">{text}</p>}
+      <Show when={notification.post}>
+        {(post) => (
+          <p className="text-muted-foreground pl-12 truncate">{post.content}</p>
+        )}
       </Show>
-    </div>
-  );
-}
-
-function ReplyRow({
-  notification,
-}: {
-  notification: Extract<DummyNotification, { type: 'reply' }>;
-}) {
-  return (
-    <div className="border-border hover:bg-accent/30 cursor-pointer border-b px-4 py-3 transition-colors">
-      <div className="flex gap-3">
-        <UserAvatar
-          name={notification.actor.name}
-          className="size-10 shrink-0"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="flex items-baseline gap-1 text-[15px]">
-            <span className="truncate font-bold">
-              {notification.actor.name}
-            </span>
-            <span className="text-muted-foreground truncate">
-              @{notification.actor.username}
-            </span>
-            <span className="text-muted-foreground">· {notification.date}</span>
-          </p>
-          <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-            <CornerDownRight className="size-3.5" />
-            Replied to you
-          </p>
-          <p className="mt-1 text-[15px]">{notification.content}</p>
-
-          <div className="text-muted-foreground mt-3 flex items-center justify-between pr-8 text-sm">
-            <button className="hover:text-foreground transition-colors">
-              <MessageCircle className="size-4" />
-            </button>
-            <button className="transition-colors hover:text-green-500">
-              <Repeat2 className="size-4" />
-            </button>
-            <button className="transition-colors hover:text-red-500">
-              <Heart className="size-4" />
-            </button>
-            <div className="flex items-center gap-4">
-              <button className="hover:text-foreground transition-colors">
-                <Bookmark className="size-4" />
-              </button>
-              <button className="hover:text-foreground transition-colors">
-                <Share className="size-4" />
-              </button>
-              <button className="hover:text-foreground transition-colors">
-                <Ellipsis className="size-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

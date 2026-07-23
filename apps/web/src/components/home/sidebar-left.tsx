@@ -1,9 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
 import { authClient } from '@/lib/auth-client';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { UserAvatar } from '@/components/user-avatar';
+import { useTRPC } from '@/utils/trpc';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
 
@@ -133,6 +135,16 @@ function AccountChip({ user }: { user: AccountUser }) {
 }
 
 function LoggedInNav({ user }: { user: AccountUser }) {
+  const trpc = useTRPC();
+  // Polling, not sockets — matches CLAUDE.md's "start with refetchInterval"
+  // guidance for real-time surfaces; upgrade to SSE only if this matters.
+  const unreadQuery = useQuery(
+    trpc.notification.unreadCount.queryOptions(undefined, {
+      refetchInterval: 30_000,
+    }),
+  );
+  const unreadCount = unreadQuery.data?.count ?? 0;
+
   return (
     <nav className="flex flex-col gap-1">
       <AccountChip user={user} />
@@ -147,10 +159,15 @@ function LoggedInNav({ user }: { user: AccountUser }) {
         >
           {({ isActive }) => (
             <>
-              <Icon
-                className="size-6"
-                fill={isActive ? 'currentColor' : 'none'}
-              />
+              <span className="relative">
+                <Icon
+                  className="size-6"
+                  fill={isActive ? 'currentColor' : 'none'}
+                />
+                {label === 'Notifications' && unreadCount > 0 && (
+                  <span className="bg-primary absolute -top-1 -right-1 size-2.5 rounded-full" />
+                )}
+              </span>
               {label}
             </>
           )}

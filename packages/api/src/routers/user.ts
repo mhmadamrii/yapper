@@ -7,6 +7,7 @@ import { follow, userStats } from '@yapper/db/schema/social';
 import { z } from 'zod';
 
 import { getViewerExclusions } from '../lib/social-filters';
+import { notify } from '../lib/notifications';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
 export const userRouter = router({
@@ -150,6 +151,12 @@ export const userRouter = router({
                 },
               }),
           ]);
+          await notify(db, {
+            recipientId: input.userId,
+            actorId: followerId,
+            type: 'follow',
+            postId: null,
+          });
         }
       } else {
         const deleted = await db

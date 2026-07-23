@@ -1,15 +1,33 @@
+import { useState } from 'react';
 import { imageKitUrl } from '@/lib/imagekit';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { QuotedPostPreview } from '@/components/home/quoted-post-preview';
 import { useSetLike } from '@/lib/use-set-like';
+import { useSetRepost } from '@/lib/use-set-repost';
 import { useSetSave } from '@/lib/use-set-save';
 import { PostCardMenu } from '@/components/home/post-card-menu';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
+import { DialogCreateQuote } from '@/routes/(yapper)/-components/dialog-create-quote';
 import { formatCount, timeAgo } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
 
-import { Bookmark, Heart, MessageCircle, Repeat2, Share } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@yapper/ui/components/dropdown-menu';
+
+import {
+  Bookmark,
+  Heart,
+  MessageCircle,
+  Quote,
+  Repeat2,
+  Share,
+} from 'lucide-react';
 
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
@@ -28,7 +46,9 @@ export function PostCard({
 }) {
   const navigate = useNavigate();
   const setLike = useSetLike();
+  const setRepost = useSetRepost();
   const setSave = useSetSave();
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const handle = post.author.username ?? 'unknown';
 
   return (
@@ -112,6 +132,17 @@ export function PostCard({
               ))}
             </div>
           )}
+          {post.quotedPost && (
+            <QuotedPostPreview
+              post={post.quotedPost}
+              onClick={() =>
+                navigate({
+                  to: '/post/$postId',
+                  params: { postId: post.quotedPost!.id },
+                })
+              }
+            />
+          )}
           <div className="text-muted-foreground mt-3 flex items-center justify-between text-sm">
             <DialogCreateReply
               post={post}
@@ -125,10 +156,37 @@ export function PostCard({
                 </button>
               }
             />
-            <button className="flex items-center gap-1.5 transition-colors hover:text-green-500">
-              <Repeat2 className="size-4" />
-              {formatCount(post.repostCount)}
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                onClick={(e) => e.stopPropagation()}
+                className={`flex items-center gap-1.5 transition-colors outline-none hover:text-green-500 ${
+                  post.repostedByMe ? 'text-green-500' : ''
+                }`}
+              >
+                <Repeat2 className="size-4" />
+                {formatCount(post.repostCount)}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenuItem
+                  onClick={() => setRepost(post.id, !post.repostedByMe)}
+                >
+                  <Repeat2 />
+                  {post.repostedByMe ? 'Undo repost' : 'Repost'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setQuoteOpen(true)}>
+                  <Quote />
+                  Quote post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DialogCreateQuote
+              post={post}
+              open={quoteOpen}
+              onOpenChange={setQuoteOpen}
+            />
             <button
               onClick={(e) => {
                 e.stopPropagation();

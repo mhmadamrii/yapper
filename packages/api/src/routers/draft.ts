@@ -6,6 +6,7 @@ import { post } from '@yapper/db/schema/post';
 import { z } from 'zod';
 
 import { getViewerExclusions } from '../lib/social-filters';
+import { notify } from '../lib/notifications';
 import { protectedProcedure, router } from '../index';
 import { buildPostInsertStatements, mediaInput } from './post';
 
@@ -193,6 +194,7 @@ export const draftRouter = router({
         });
       }
 
+      let parentAuthorId: string | undefined;
       if (draft.replyToPostId) {
         const parent = await db.query.post.findFirst({
           where: eq(post.id, draft.replyToPostId),
@@ -211,6 +213,7 @@ export const draftRouter = router({
             message: "You can't reply to this post",
           });
         }
+        parentAuthorId = parent.authorId;
       }
 
       const postId = crypto.randomUUID();
@@ -232,6 +235,15 @@ export const draftRouter = router({
         }),
         db.delete(postDraft).where(eq(postDraft.id, input.id)),
       ]);
+
+      if (draft.replyToPostId && parentAuthorId) {
+        await notify(db, {
+          recipientId: parentAuthorId,
+          actorId: ctx.session.user.id,
+          type: 'reply',
+          postId: draft.replyToPostId,
+        });
+      }
 
       return { id: postId };
     }),
