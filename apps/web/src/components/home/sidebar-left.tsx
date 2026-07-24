@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useLocation } from '@tanstack/react-router';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
 import { authClient } from '@/lib/auth-client';
@@ -55,19 +55,26 @@ const navItemsAfterProfile = [
 
 export function SidebarLeft() {
   const { data: session, isPending } = authClient.useSession();
+  const location = useLocation();
+  const collapsed = location.pathname.startsWith('/messages');
 
   return (
-    <aside className="sticky top-0 hidden h-svh flex-col items-end px-6 py-6 md:flex">
+    <aside
+      className={cn(
+        'sticky top-0 hidden h-svh flex-col py-6 md:flex',
+        collapsed ? 'w-20 items-center' : 'items-end px-6',
+      )}
+    >
       <div
         className={cn(
           'flex flex-col gap-1',
-          session || isPending ? 'w-50' : 'w-64',
+          collapsed ? 'w-fit' : session || isPending ? 'w-50' : 'w-64',
         )}
       >
         {isPending ? (
           <SidebarSkeleton />
         ) : session ? (
-          <LoggedInNav user={session.user} />
+          <LoggedInNav user={session.user} collapsed={collapsed} />
         ) : (
           <LoggedOutPanel />
         )}
@@ -140,7 +147,13 @@ function AccountChip({ user }: { user: AccountUser }) {
   );
 }
 
-function LoggedInNav({ user }: { user: AccountUser }) {
+function LoggedInNav({
+  user,
+  collapsed,
+}: {
+  user: AccountUser;
+  collapsed?: boolean;
+}) {
   const trpc = useTRPC();
   // Polling, not sockets — matches CLAUDE.md's "start with refetchInterval"
   // guidance for real-time surfaces; upgrade to SSE only if this matters.
@@ -158,6 +171,9 @@ function LoggedInNav({ user }: { user: AccountUser }) {
   );
   const unreadMessagesCount = unreadMessagesQuery.data?.count ?? 0;
 
+  const linkClassName =
+    'hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors';
+
   return (
     <nav className="flex flex-col gap-1">
       <AccountChip user={user} />
@@ -166,7 +182,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
         <Link
           key={label}
           to={to}
-          className="hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors"
+          className={linkClassName}
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >
@@ -184,7 +200,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
                   <span className="bg-primary absolute -top-1 -right-1 size-2.5 rounded-full" />
                 )}
               </span>
-              {label}
+              {!collapsed && label}
             </>
           )}
         </Link>
@@ -193,7 +209,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
       <Link
         to="/profile/$userId"
         params={{ userId: user.id }}
-        className="hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors"
+        className={linkClassName}
         activeProps={{ className: 'font-bold' }}
       >
         {({ isActive }) => (
@@ -202,7 +218,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
               className="size-6"
               fill={isActive ? 'currentColor' : 'none'}
             />
-            Profile
+            {!collapsed && 'Profile'}
           </>
         )}
       </Link>
@@ -211,7 +227,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
         <Link
           key={label}
           to={to}
-          className="hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors"
+          className={linkClassName}
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >
@@ -221,7 +237,7 @@ function LoggedInNav({ user }: { user: AccountUser }) {
                 className="size-6"
                 fill={isActive ? 'currentColor' : 'none'}
               />
-              {label}
+              {!collapsed && label}
             </>
           )}
         </Link>
@@ -229,10 +245,20 @@ function LoggedInNav({ user }: { user: AccountUser }) {
 
       <DialogCreatePost
         trigger={
-          <Button size="lg" className="mt-4 w-fit rounded-full px-8">
-            <PenSquare />
-            New post
-          </Button>
+          collapsed ? (
+            <Button
+              size="icon"
+              className="mt-4 rounded-full"
+              aria-label="New post"
+            >
+              <PenSquare />
+            </Button>
+          ) : (
+            <Button size="lg" className="mt-4 w-fit rounded-full px-8">
+              <PenSquare />
+              New post
+            </Button>
+          )
         }
       />
     </nav>
