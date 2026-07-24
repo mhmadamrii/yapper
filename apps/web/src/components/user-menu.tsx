@@ -1,5 +1,8 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { Skeleton } from '@yapper/ui/components/skeleton';
+import { authClient } from '@/lib/auth-client';
 import { Button } from '@yapper/ui/components/button';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@yapper/ui/components/dropdown-menu';
-import { Skeleton } from '@yapper/ui/components/skeleton';
-
-import { authClient } from '@/lib/auth-client';
 
 export default function UserMenu() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function UserMenu() {
 
   if (!session) {
     return (
-      <Link to="/login">
+      <Link to="/auth">
         <Button variant="outline">Sign In</Button>
       </Link>
     );

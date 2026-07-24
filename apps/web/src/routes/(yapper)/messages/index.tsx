@@ -1,9 +1,40 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router';
+import { MessageCircle, Plus } from 'lucide-react';
+import { Button } from '@yapper/ui/components/button';
+
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@yapper/ui/components/empty';
+
+import { DialogNewChat } from './-components/dialog-new-chat';
 
 export const Route = createFileRoute('/(yapper)/messages/')({
-  component: RouteComponent,
-})
+  component: MessagesIndexPage,
+});
 
-function RouteComponent() {
-  return <div>Hello "/messages/"!</div>
+function MessagesIndexPage() {
+  return (
+    <Empty className="h-full min-h-svh border-none">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <MessageCircle />
+        </EmptyMedia>
+        <EmptyTitle>Say hi to someone</EmptyTitle>
+      </EmptyHeader>
+      <EmptyContent>
+        <DialogNewChat
+          trigger={
+            <Button className="rounded-full px-5">
+              <Plus />
+              New chat
+            </Button>
+          }
+        />
+      </EmptyContent>
+    </Empty>
+  );
 }

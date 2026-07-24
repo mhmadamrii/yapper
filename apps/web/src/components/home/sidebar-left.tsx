@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
+import { cn } from '@yapper/ui/lib/utils';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
 
@@ -57,7 +58,12 @@ export function SidebarLeft() {
 
   return (
     <aside className="sticky top-0 hidden h-svh flex-col items-end px-6 py-6 md:flex">
-      <div className="flex w-50 flex-col gap-1">
+      <div
+        className={cn(
+          'flex flex-col gap-1',
+          session || isPending ? 'w-50' : 'w-64',
+        )}
+      >
         {isPending ? (
           <SidebarSkeleton />
         ) : session ? (
@@ -145,6 +151,13 @@ function LoggedInNav({ user }: { user: AccountUser }) {
   );
   const unreadCount = unreadQuery.data?.count ?? 0;
 
+  const unreadMessagesQuery = useQuery(
+    trpc.message.unreadCount.queryOptions(undefined, {
+      refetchInterval: 30_000,
+    }),
+  );
+  const unreadMessagesCount = unreadMessagesQuery.data?.count ?? 0;
+
   return (
     <nav className="flex flex-col gap-1">
       <AccountChip user={user} />
@@ -165,6 +178,9 @@ function LoggedInNav({ user }: { user: AccountUser }) {
                   fill={isActive ? 'currentColor' : 'none'}
                 />
                 {label === 'Notifications' && unreadCount > 0 && (
+                  <span className="bg-primary absolute -top-1 -right-1 size-2.5 rounded-full" />
+                )}
+                {label === 'Chat' && unreadMessagesCount > 0 && (
                   <span className="bg-primary absolute -top-1 -right-1 size-2.5 rounded-full" />
                 )}
               </span>
@@ -232,7 +248,7 @@ function LoggedOutPanel() {
         Join the conversation
       </h1>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Link to="/auth">
           <Button className="rounded-full px-5">Create account</Button>
         </Link>

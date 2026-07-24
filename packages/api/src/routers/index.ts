@@ -1,6 +1,7 @@
 import { protectedProcedure, publicProcedure, router } from '../index';
 import { draftRouter } from './draft';
 import { mediaRouter } from './media';
+import { messageRouter } from './message';
 import { notificationRouter } from './notification';
 import { postRouter } from './post';
 import { socialRouter } from './social';
@@ -9,6 +10,7 @@ import { userRouter } from './user';
 export const appRouter = router({
   draft: draftRouter,
   media: mediaRouter,
+  message: messageRouter,
   notification: notificationRouter,
   post: postRouter,
   social: socialRouter,

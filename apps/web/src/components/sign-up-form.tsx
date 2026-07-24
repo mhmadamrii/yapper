@@ -372,7 +372,7 @@ export function SignUpForm() {
               key={`next-${step}`}
               type="button"
               size="lg"
-              className="rounded-full"
+              className="rounded-full w-30"
               onClick={() => goNext(step as 1 | 2)}
             >
               Next

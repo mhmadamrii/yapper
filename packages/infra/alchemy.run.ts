@@ -1,5 +1,5 @@
 import alchemy from 'alchemy';
-import { RateLimit, Worker } from 'alchemy/cloudflare';
+import { DurableObjectNamespace, RateLimit, Worker } from 'alchemy/cloudflare';
 import { config } from 'dotenv';
 
 const isProd = process.env.SERVER_ENV === 'production';
@@ -24,6 +24,10 @@ export const server = await Worker('server', {
     RATE_LIMITER: RateLimit({
       namespace_id: 1001,
       simple: { limit: 10, period: 60 },
+    }),
+    CONVERSATION_DO: DurableObjectNamespace('conversation-room', {
+      className: 'ConversationRoom',
+      sqlite: true,
     }),
   },
   dev: {
