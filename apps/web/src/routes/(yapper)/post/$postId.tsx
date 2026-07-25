@@ -9,6 +9,8 @@ import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { authClient } from '@/lib/auth-client';
 import { imageKitUrl } from '@/lib/imagekit';
+import { seo } from '@/lib/seo';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetSave } from '@/lib/use-set-save';
@@ -18,12 +20,13 @@ import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-r
 import { useTRPC } from '@/utils/trpc';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Button } from '@yapper/ui/components/button';
+
 import {
   createFileRoute,
   useNavigate,
   useRouter,
 } from '@tanstack/react-router';
-import { Button } from '@yapper/ui/components/button';
 
 import {
   DropdownMenu,
@@ -50,6 +53,7 @@ type ReplyLayout = 'linear' | 'threaded';
 type PostById = inferRouterOutputs<AppRouter>['post']['byId'];
 
 export const Route = createFileRoute('/(yapper)/post/$postId')({
+  head: () => ({ meta: seo({ title: 'Post' }) }),
   component: PostDetailPage,
 });
 
@@ -63,6 +67,11 @@ function PostDetailPage() {
 
   const postQuery = useQuery(
     trpc.post.byId.queryOptions({ id: postId, replySort }),
+  );
+  useDocumentTitle(
+    postQuery.data
+      ? `${postQuery.data.author.name}: "${postQuery.data.content.slice(0, 60)}${postQuery.data.content.length > 60 ? '…' : ''}"`
+      : undefined,
   );
 
   return (

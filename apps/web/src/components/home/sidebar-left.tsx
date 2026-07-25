@@ -19,7 +19,6 @@ import {
 
 import {
   Bell,
-  Bird,
   Bookmark,
   ChevronDown,
   CircleUserRound,
@@ -268,7 +267,7 @@ function LoggedInNav({
 function LoggedOutPanel() {
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <Bird className="text-primary size-10" />
+      <img src="/yapper-logo.png" alt="Yapper" className="size-10" />
 
       <h1 className="text-3xl font-bold tracking-tight">
         Join the conversation

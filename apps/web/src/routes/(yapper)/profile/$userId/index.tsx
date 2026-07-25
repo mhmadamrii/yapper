@@ -12,7 +12,9 @@ import { authClient } from '@/lib/auth-client';
 import { imageKitUrl } from '@/lib/imagekit';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { DialogEditProfile } from '@/routes/(yapper)/-components/dialog-edit-profile';
+import { seo } from '@/lib/seo';
 import { formatCount } from '@/lib/utils';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { useTRPC } from '@/utils/trpc';
 
@@ -26,6 +28,7 @@ const TABS = [
 type ProfileTab = (typeof TABS)[number]['key'];
 
 export const Route = createFileRoute('/(yapper)/profile/$userId/')({
+  head: () => ({ meta: seo({ title: 'Profile' }) }),
   component: ProfilePage,
 });
 
@@ -39,6 +42,11 @@ function ProfilePage() {
   const [tab, setTab] = useState<ProfileTab>('posts');
 
   const userQuery = useQuery(trpc.user.byId.queryOptions({ id: userId }));
+  useDocumentTitle(
+    userQuery.data && userQuery.data.username
+      ? `${userQuery.data.name} (@${userQuery.data.username})`
+      : userQuery.data?.name,
+  );
 
   const postsQuery = useInfiniteQuery(
     trpc.post.byUser.infiniteQueryOptions(

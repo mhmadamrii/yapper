@@ -1,5 +1,4 @@
 import { Skeleton } from '@yapper/ui/components/skeleton';
-
 import { For } from '@/components/control-flow';
 
 export function FeedSkeleton() {

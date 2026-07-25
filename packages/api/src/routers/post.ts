@@ -358,6 +358,109 @@ export const postRouter = router({
       return { items, nextCursor };
     }),
 
+  // Following tab: reverse-chronological, fan-out-on-read from the `follow`
+  // table (its PK is (followerId, followeeId), covering exactly this query).
+  // Fan-out-on-write (precomputed per-follower timelines) would pay off at
+  // scale with high-follow-count accounts, but reads-at-write-time is the
+  // wrong trade here — portfolio-scale write volume, and simplicity wins.
+  listFollowing: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(50).default(20),
+        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const viewerId = ctx.session.user.id;
+      const cursor = input.cursor;
+
+      const { feedExcluded } = await getViewerExclusions(db, viewerId);
+
+      const followeeRows = await db
+        .select({ followeeId: follow.followeeId })
+        .from(follow)
+        .where(eq(follow.followerId, viewerId));
+      const followeeIds = followeeRows
+        .map((row) => row.followeeId)
+        .filter((id) => !feedExcluded.has(id));
+
+      if (followeeIds.length === 0) {
+        return { items: [], nextCursor: null };
+      }
+
+      const rows = await db.query.post.findMany({
+        where: and(
+          inArray(post.authorId, followeeIds),
+          isNull(post.replyToPostId),
+          cursor
+            ? or(
+                lt(post.createdAt, new Date(cursor.createdAt)),
+                and(
+                  eq(post.createdAt, new Date(cursor.createdAt)),
+                  lt(post.id, cursor.id),
+                ),
+              )
+            : undefined,
+        ),
+        orderBy: [desc(post.createdAt), desc(post.id)],
+        limit: input.limit + 1,
+        with: {
+          author: {
+            columns: {
+              id: true,
+              name: true,
+              username: true,
+              displayUsername: true,
+              emailVerified: true,
+              image: true,
+            },
+          },
+          media: {
+            orderBy: (media, { asc }) => [asc(media.position)],
+          },
+          quotedPost: {
+            with: {
+              author: {
+                columns: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  displayUsername: true,
+                  emailVerified: true,
+                  image: true,
+                },
+              },
+              media: {
+                orderBy: (media, { asc }) => [asc(media.position)],
+              },
+            },
+          },
+        },
+      });
+
+      let nextCursor: { createdAt: string; id: string } | null = null;
+      if (rows.length > input.limit) {
+        rows.pop();
+        const last = rows[rows.length - 1]!;
+        nextCursor = { createdAt: last.createdAt.toISOString(), id: last.id };
+      }
+
+      const engagement = await viewerEngagement(
+        db,
+        viewerId,
+        rows.map((row) => row.id),
+      );
+      const items = rows.map((row) => ({
+        ...row,
+        likedByMe: engagement.liked.has(row.id),
+        savedByMe: engagement.saved.has(row.id),
+        repostedByMe: engagement.reposted.has(row.id),
+      }));
+
+      return { items, nextCursor };
+    }),
+
   byId: publicProcedure
     .input(
       z.object({

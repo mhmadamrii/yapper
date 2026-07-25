@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { SignUpForm } from '@/components/sign-up-form';
+import { seo } from '@/lib/seo';
 
 export const Route = createFileRoute('/(global)/auth/')({
+  head: () => ({ meta: seo({ title: 'Create account' }) }),
   component: RouteComponent,
 });
 

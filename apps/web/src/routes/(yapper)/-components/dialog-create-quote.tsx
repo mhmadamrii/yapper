@@ -1,4 +1,6 @@
 import { authClient } from '@/lib/auth-client';
+import { CharProgress, type DraftMediaItem } from './dialog-create-post';
+import { Dialog, DialogContent } from '@yapper/ui/components/dialog';
 import { uploadToImageKit } from '@/lib/imagekit';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6,7 +8,6 @@ import { Button } from '@yapper/ui/components/button';
 import { ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-
 import { For, Show } from '@/components/control-flow';
 import { GifPickerButton } from './gif-picker-button';
 import { UserAvatar } from '@/components/user-avatar';
@@ -14,9 +15,6 @@ import {
   QuotedPostPreview,
   type QuotedPostTarget,
 } from '@/components/home/quoted-post-preview';
-import { CharProgress, type DraftMediaItem } from './dialog-create-post';
-
-import { Dialog, DialogContent } from '@yapper/ui/components/dialog';
 
 const MAX_POST_LENGTH = 300;
 const MAX_IMAGES = 4;

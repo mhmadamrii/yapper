@@ -7,6 +7,7 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { authClient } from '@/lib/auth-client';
+import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
 
@@ -27,6 +28,7 @@ type NotificationItem =
 const TABS = ['All', 'Mentions'] as const;
 
 export const Route = createFileRoute('/(yapper)/notifications/')({
+  head: () => ({ meta: seo({ title: 'Notifications' }) }),
   component: NotificationsPage,
 });
 

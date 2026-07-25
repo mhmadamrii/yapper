@@ -12,6 +12,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router';
 
+import { seo } from '@/lib/seo';
 import appCss from '../index.css?url';
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>;
@@ -28,14 +29,17 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
       },
-      {
-        title: 'My App',
-      },
+      ...seo({}),
     ],
     links: [
       {
         rel: 'stylesheet',
         href: appCss,
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        href: '/yapper-logo.png',
       },
     ],
   }),

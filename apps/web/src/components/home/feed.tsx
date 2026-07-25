@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import { Bird, Hash, ImageIcon } from 'lucide-react';
+import { Hash, ImageIcon } from 'lucide-react';
 import { PostCard } from './post-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { authClient } from '@/lib/auth-client';
@@ -16,17 +16,31 @@ export function Feed() {
 
   const tabs = session ? ['Discover', 'Following'] : ['Discover', 'Feeds ✨'];
   const [activeTab, setActiveTab] = useState(0);
+  const showFollowing = !!session && activeTab === 1;
 
-  const postsQuery = useInfiniteQuery(
+  const discoverQuery = useInfiniteQuery(
     trpc.post.list.infiniteQueryOptions(
       { limit: 20 },
       {
         getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
         initialCursor: null,
+        enabled: !showFollowing,
       },
     ),
   );
 
+  const followingQuery = useInfiniteQuery(
+    trpc.post.listFollowing.infiniteQueryOptions(
+      { limit: 20 },
+      {
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+        initialCursor: null,
+        enabled: showFollowing,
+      },
+    ),
+  );
+
+  const postsQuery = showFollowing ? followingQuery : discoverQuery;
   const posts = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
@@ -34,7 +48,7 @@ export function Feed() {
       <header className="bg-background/80 border-border sticky top-0 z-10 border-b backdrop-blur">
         <Show when={session}>
           <div className="relative flex items-center justify-center py-3">
-            <Bird className="text-primary size-7" />
+            <img src="/yapper-logo.png" alt="Yapper" className="size-7" />
             <Hash className="text-muted-foreground absolute right-4 size-5" />
           </div>
         </Show>
@@ -83,7 +97,9 @@ export function Feed() {
       <Switch
         fallback={
           <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-            Nothing here yet. Be the first to yap.
+            {showFollowing
+              ? 'No posts yet. Follow people to see their yaps here.'
+              : 'Nothing here yet. Be the first to yap.'}
           </p>
         }
       >

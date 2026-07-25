@@ -5,9 +5,11 @@ import { useState } from 'react';
 
 import { For, Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
+import { seo } from '@/lib/seo';
 import { interestTags, trendingExplore } from './-dummy-explore';
 
 export const Route = createFileRoute('/(yapper)/search/')({
+  head: () => ({ meta: seo({ title: 'Explore' }) }),
   component: ExplorePage,
 });
 

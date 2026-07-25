@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth-client';
+import { seo } from '@/lib/seo';
 import { useConversationStream } from '@/lib/use-conversation-stream';
+import { useDocumentTitle } from '@/lib/use-document-title';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
 
@@ -11,6 +13,7 @@ import { GroupSettingsDropdown } from '../-components/group-settings-dropdown';
 import { MessageComposer } from '../-components/message-composer';
 
 export const Route = createFileRoute('/(yapper)/messages/$conversationId/')({
+  head: () => ({ meta: seo({ title: 'Messages' }) }),
   component: ConversationPage,
 });
 
@@ -42,6 +45,7 @@ function ConversationPage() {
     (isGroup
       ? conversationMeta?.peers.map((p) => p.name).join(', ')
       : peer?.name);
+  useDocumentTitle(title);
 
   return (
     <div className="flex h-svh flex-col">

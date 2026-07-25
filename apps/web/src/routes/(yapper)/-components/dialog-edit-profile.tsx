@@ -7,7 +7,6 @@ import { Input } from '@yapper/ui/components/input';
 import { Camera } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-
 import { Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 

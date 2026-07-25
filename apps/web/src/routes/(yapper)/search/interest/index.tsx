@@ -5,10 +5,12 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 import { For } from '@/components/control-flow';
+import { seo } from '@/lib/seo';
 import { interestTags } from '../-dummy-explore';
 import { allInterests } from './-dummy-interests';
 
 export const Route = createFileRoute('/(yapper)/search/interest/')({
+  head: () => ({ meta: seo({ title: 'Interests' }) }),
   component: InterestsPage,
 });
 

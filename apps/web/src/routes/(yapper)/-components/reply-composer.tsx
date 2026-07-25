@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { toast } from 'sonner';
-
 import { Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { authClient } from '@/lib/auth-client';

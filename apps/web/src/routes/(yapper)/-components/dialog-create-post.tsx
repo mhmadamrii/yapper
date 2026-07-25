@@ -7,7 +7,6 @@ import { Button } from '@yapper/ui/components/button';
 import { ChevronDown, Globe, ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-
 import { For, Show } from '@/components/control-flow';
 import { GifPickerButton } from './gif-picker-button';
 

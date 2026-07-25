@@ -11,10 +11,12 @@ import {
   type ReplyTarget,
 } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { imageKitUrl } from '@/lib/imagekit';
+import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
 
 export const Route = createFileRoute('/(yapper)/drafts/')({
+  head: () => ({ meta: seo({ title: 'Drafts' }) }),
   component: DraftsPage,
 });
 

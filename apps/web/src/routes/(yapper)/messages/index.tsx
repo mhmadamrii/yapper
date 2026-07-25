@@ -10,9 +10,11 @@ import {
   EmptyTitle,
 } from '@yapper/ui/components/empty';
 
+import { seo } from '@/lib/seo';
 import { DialogNewChat } from './-components/dialog-new-chat';
 
 export const Route = createFileRoute('/(yapper)/messages/')({
+  head: () => ({ meta: seo({ title: 'Messages' }) }),
   component: MessagesIndexPage,
 });
 

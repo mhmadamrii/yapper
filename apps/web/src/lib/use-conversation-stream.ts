@@ -39,8 +39,12 @@ export function useConversationStream(conversationId: string | undefined) {
     source.onmessage = (event) => {
       const incoming = JSON.parse(event.data) as IncomingMessage;
 
-      queryClient.setQueryData(
-        trpc.message.thread.infiniteQueryKey({ conversationId }),
+      // Partial-key match (like message.list below) — the thread is always
+      // queried with `{ conversationId, limit: 30 }` (see
+      // conversation-thread.tsx), so an exact key built from `{
+      // conversationId }` alone would never match the live cache entry.
+      queryClient.setQueriesData(
+        { queryKey: trpc.message.thread.infiniteQueryKey({ conversationId }) },
         (old: ThreadData | undefined) => {
           if (!old || old.pages.length === 0) return old;
           if (old.pages[0]!.items.some((m) => m.id === incoming.id)) {
