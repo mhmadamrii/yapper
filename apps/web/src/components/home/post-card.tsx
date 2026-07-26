@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { imageKitUrl } from '@/lib/imagekit';
+import { MentionText } from '@/components/mention-text';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
@@ -109,7 +110,7 @@ export function PostCard({
             </span>
           </div>
           <p className="mt-0.5 text-[15px] leading-normal whitespace-pre-wrap">
-            {post.content}
+            <MentionText text={post.content} />
           </p>
           {post.media.length > 0 && (
             <div

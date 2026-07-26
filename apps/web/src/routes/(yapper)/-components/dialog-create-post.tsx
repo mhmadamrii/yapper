@@ -6,9 +6,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { ChevronDown, Globe, ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
 import { GifPickerButton } from './gif-picker-button';
+import { MentionTextarea } from './mention-textarea';
 
 import {
   Dialog,
@@ -206,7 +207,10 @@ export function DialogCreatePost({
     >
       <DialogTrigger render={trigger} />
 
-      <DialogContent showCloseButton={false} className="gap-0 p-0 sm:max-w-xl">
+      <DialogContent
+        showCloseButton={false}
+        className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 gap-0 overflow-y-auto p-0 sm:max-w-xl"
+      >
         <div className="flex items-center justify-between px-4 py-3">
           <Button
             variant="ghost"
@@ -245,10 +249,10 @@ export function DialogCreatePost({
             className="size-11 shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <textarea
+            <MentionTextarea
               autoFocus
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={setText}
               placeholder="What's up?"
               rows={totalImages > 0 ? 4 : 8}
               className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"

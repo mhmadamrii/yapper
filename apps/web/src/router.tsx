@@ -6,7 +6,7 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import { env } from '@yapper/env/web';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { routeTree } from './routeTree.gen';
 import { TRPCProvider } from './utils/trpc';
 

@@ -1,5 +1,6 @@
 import { imageKitUrl } from '@/lib/imagekit';
 import { UserAvatar } from '@/components/user-avatar';
+import { MentionText } from '@/components/mention-text';
 import { Show } from '@/components/control-flow';
 import { timeAgo } from '@/lib/utils';
 
@@ -61,7 +62,7 @@ export function QuotedPostPreview({
         </span>
       </div>
       <p className="mt-1 line-clamp-4 text-[15px] whitespace-pre-wrap">
-        {post.content}
+        <MentionText text={post.content} />
       </p>
       <Show when={post.media[0]}>
         {(m) => (

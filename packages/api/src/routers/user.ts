@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ilike, isNotNull, ne, or, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
 import { user } from '@yapper/db/schema/auth';
@@ -11,6 +11,37 @@ import { notify } from '../lib/notifications';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
 export const userRouter = router({
+  // Backs @mention autocomplete in the composers — only users with a
+  // resolvable handle can be mentioned.
+  search: protectedProcedure
+    .input(z.object({ query: z.string().trim().min(1).max(50) }))
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const me = ctx.session.user.id;
+      const { blocked } = await getViewerExclusions(db, me);
+
+      const term = `%${input.query}%`;
+      const rows = await db
+        .select({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          displayUsername: user.displayUsername,
+          image: user.image,
+        })
+        .from(user)
+        .where(
+          and(
+            ne(user.id, me),
+            isNotNull(user.username),
+            or(ilike(user.username, term), ilike(user.name, term)),
+          ),
+        )
+        .limit(10);
+
+      return rows.filter((row) => !blocked.has(row.id));
+    }),
+
   byId: publicProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Check, Users, X } from 'lucide-react';
 import { Button } from '@yapper/ui/components/button';
 import { Input } from '@yapper/ui/components/input';

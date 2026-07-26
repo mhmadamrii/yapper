@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
+import { MentionText } from '@/components/mention-text';
 import { UserAvatar } from '@/components/user-avatar';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { authClient } from '@/lib/auth-client';
@@ -253,7 +254,9 @@ function NotificationRow({
       </p>
       <Show when={notification.post}>
         {(post) => (
-          <p className="text-muted-foreground pl-12 truncate">{post.content}</p>
+          <p className="text-muted-foreground pl-12 truncate">
+            <MentionText text={post.content} />
+          </p>
         )}
       </Show>
     </div>

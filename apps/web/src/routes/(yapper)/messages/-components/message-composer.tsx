@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Button } from '@yapper/ui/components/button';
 import { Textarea } from '@yapper/ui/components/textarea';
 import { SendHorizontal } from 'lucide-react';

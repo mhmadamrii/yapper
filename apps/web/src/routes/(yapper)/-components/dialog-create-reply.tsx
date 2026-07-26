@@ -5,9 +5,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
+import { MentionText } from '@/components/mention-text';
 import { GifPickerButton } from './gif-picker-button';
+import { MentionTextarea } from './mention-textarea';
 import { UserAvatar } from '@/components/user-avatar';
 
 import {
@@ -228,7 +230,7 @@ export function DialogCreateReply({
 
         <DialogContent
           showCloseButton={false}
-          className="gap-0 p-0 sm:max-w-xl"
+          className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 gap-0 overflow-y-auto p-0 sm:max-w-xl"
         >
           <div className="flex items-center justify-between px-4 py-3">
             <Button
@@ -269,7 +271,9 @@ export function DialogCreateReply({
             />
             <div className="min-w-0 flex-1">
               <p className="font-bold">{post.author.name}</p>
-              <p className="line-clamp-3 text-[15px]">{post.content}</p>
+              <p className="line-clamp-3 text-[15px]">
+                <MentionText text={post.content} />
+              </p>
             </div>
             <Show when={post.media[0]}>
               {(m) => (
@@ -289,10 +293,10 @@ export function DialogCreateReply({
               className="size-11 shrink-0"
             />
             <div className="min-w-0 flex-1">
-              <textarea
+              <MentionTextarea
                 autoFocus
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={setText}
                 placeholder="Write your reply"
                 rows={totalImages > 0 ? 3 : 6}
                 className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"

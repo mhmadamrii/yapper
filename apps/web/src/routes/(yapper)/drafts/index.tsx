@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { FileText, Send, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 import { For, Show } from '@/components/control-flow';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';

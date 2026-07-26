@@ -4,7 +4,7 @@ import { Loader } from './loader';
 import { Label } from '@yapper/ui/components/label';
 import { authClient } from '@/lib/auth-client';
 import { AtSignIcon, LockIcon, MailIcon, UserIcon } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';

@@ -2,6 +2,7 @@ import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
+import { MentionText } from '@/components/mention-text';
 import { PostCard } from '@/components/home/post-card';
 import { PostCardMenu } from '@/components/home/post-card-menu';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
@@ -242,7 +243,7 @@ function PostDetail({ post }: { post: PostById }) {
       </div>
 
       <p className="mt-3 text-xl leading-normal whitespace-pre-wrap">
-        {post.content}
+        <MentionText text={post.content} />
       </p>
 
       <Show when={post.media.length > 0}>

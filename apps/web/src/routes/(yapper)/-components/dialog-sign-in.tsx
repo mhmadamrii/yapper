@@ -7,7 +7,7 @@ import { Button } from '@yapper/ui/components/button';
 import { Label } from '@yapper/ui/components/label';
 import { LockIcon, MailIcon } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 import {
   Dialog,

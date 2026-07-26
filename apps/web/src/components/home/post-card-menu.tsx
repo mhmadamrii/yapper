@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 import { authClient } from '@/lib/auth-client';
 import { useDeletePost } from '@/lib/use-delete-post';

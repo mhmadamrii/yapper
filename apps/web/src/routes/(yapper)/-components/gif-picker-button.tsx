@@ -5,7 +5,7 @@ import { env } from '@yapper/env/web';
 import { Button } from '@yapper/ui/components/button';
 import { ImagePlay } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Show } from '@/components/control-flow';
 
 /**
