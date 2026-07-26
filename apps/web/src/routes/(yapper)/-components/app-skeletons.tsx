@@ -1,10 +1,10 @@
 import { Skeleton } from '@yapper/ui/components/skeleton';
 import { For } from '@/components/control-flow';
 
-export function FeedSkeleton() {
+export function FeedSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="flex flex-col gap-6 px-4 py-6">
-      <For each={Array.from({ length: 4 }, (_, i) => i)}>
+      <For each={Array.from({ length: count }, (_, i) => i)}>
         {(i) => (
           <div key={i} className="flex gap-3">
             <Skeleton className="size-10 shrink-0 rounded-full" />

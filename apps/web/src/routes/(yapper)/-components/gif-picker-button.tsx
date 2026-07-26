@@ -1,5 +1,6 @@
 import { GifPicker, Theme, type Gif } from 'gif-picker-react';
 import { Klipy } from 'gif-picker-react/providers/klipy';
+import 'gif-picker-react/style.css';
 import { env } from '@yapper/env/web';
 import { Button } from '@yapper/ui/components/button';
 import { ImagePlay } from 'lucide-react';
@@ -57,13 +58,13 @@ export function GifPickerButton({
       <Show when={open}>
         {/* Click-away backdrop — the picker floats above the composer. */}
         <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-        <div className="absolute bottom-10 left-0 z-50">
+        <div className="absolute bottom-10 left-0 z-50 w-[calc(100vw-2rem)] max-w-[520px]">
           <GifPicker
             provider={provider}
             theme={Theme.AUTO}
             onGifClick={handleGifClick}
-            width={330}
-            height={380}
+            width="100%"
+            height={440}
           />
         </div>
       </Show>

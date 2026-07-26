@@ -25,3 +25,4 @@ catalog:
   '@trpc/client': ^11.18.0
   '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.3
+  react-intersection-observer: ^9.16.0
