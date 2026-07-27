@@ -43,7 +43,7 @@ export function QuotedPostPreview({
         e.stopPropagation();
         onClick();
       }}
-      className={`border-border mt-3 rounded-2xl border p-3 ${
+      className={`border-border mt-3 rounded-lg border p-3 ${
         onClick ? 'hover:bg-accent/30 cursor-pointer transition-colors' : ''
       }`}
     >

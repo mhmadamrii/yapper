@@ -107,7 +107,7 @@ function AccountChip({ user }: { user: AccountUser }) {
           image={user.image}
           className="size-12 shrink-0 transition-[width,height] duration-200 group-hover:size-9 group-aria-expanded:size-9"
         />
-        <span className="hidden min-w-0 flex-col text-left group-hover:flex group-aria-expanded:flex">
+        <span className="hidden min-w-0 flex-1 flex-col text-left group-hover:flex group-aria-expanded:flex">
           <span className="truncate text-sm font-bold">{user.name}</span>
           <span className="text-muted-foreground truncate text-xs">
             @{user.username ?? 'unknown'}

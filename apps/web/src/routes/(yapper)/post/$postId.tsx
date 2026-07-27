@@ -14,10 +14,12 @@ import { seo } from '@/lib/seo';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { useSetLike } from '@/lib/use-set-like';
+import { useSetRepost } from '@/lib/use-set-repost';
 import { useSetSave } from '@/lib/use-set-save';
 import { formatCount, formatPostTimestamp } from '@/lib/utils';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
+import { DialogCreateQuote } from '@/routes/(yapper)/-components/dialog-create-quote';
 import { useTRPC } from '@/utils/trpc';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -32,6 +34,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -44,6 +47,7 @@ import {
   Bookmark,
   Heart,
   MessageCircle,
+  Quote,
   Repeat2,
   Share,
   SlidersHorizontal,
@@ -192,6 +196,8 @@ function PostDetail({ post }: { post: PostById }) {
   const setLike = useSetLike();
   const setSave = useSetSave();
   const setFollow = useSetFollow();
+  const setRepost = useSetRepost();
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const handle = post.author.username ?? 'unknown';
 
   const goToProfile = () =>
@@ -302,10 +308,33 @@ function PostDetail({ post }: { post: PostById }) {
             </button>
           }
         />
-        <button className="flex items-center gap-1.5 transition-colors hover:text-green-500">
-          <Repeat2 className="size-5" />
-          {formatCount(post.repostCount)}
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={`flex items-center gap-1.5 transition-colors outline-none hover:text-green-500 ${
+              post.repostedByMe ? 'text-green-500' : ''
+            }`}
+          >
+            <Repeat2 className="size-5" />
+            {formatCount(post.repostCount)}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              onClick={() => setRepost(post.id, !post.repostedByMe)}
+            >
+              <Repeat2 />
+              {post.repostedByMe ? 'Undo repost' : 'Repost'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setQuoteOpen(true)}>
+              <Quote />
+              Quote post
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DialogCreateQuote
+          post={post}
+          open={quoteOpen}
+          onOpenChange={setQuoteOpen}
+        />
         <button
           onClick={() => setLike(post.id, !post.likedByMe)}
           className={`flex items-center gap-1.5 transition-colors hover:text-red-500 ${

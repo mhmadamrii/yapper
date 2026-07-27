@@ -1,3 +1,6 @@
+import type { AppRouter } from '@yapper/api/routers/index';
+import type { inferRouterOutputs } from '@trpc/server';
+
 import { useState } from 'react';
 import { imageKitUrl } from '@/lib/imagekit';
 import { MentionText } from '@/components/mention-text';
@@ -12,6 +15,7 @@ import { PostCardMenu } from '@/components/home/post-card-menu';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { DialogCreateQuote } from '@/routes/(yapper)/-components/dialog-create-quote';
 import { formatCount, timeAgo } from '@/lib/utils';
+import { toast } from '@/lib/toast';
 import { useNavigate } from '@tanstack/react-router';
 
 import {
@@ -29,9 +33,6 @@ import {
   Repeat2,
   Share,
 } from 'lucide-react';
-
-import type { AppRouter } from '@yapper/api/routers/index';
-import type { inferRouterOutputs } from '@trpc/server';
 
 export type PostListItem = inferRouterOutputs<AppRouter>['post']['list']['items'][number]; // prettier-ignore
 
@@ -218,7 +219,19 @@ export function PostCard({
                   fill={post.savedByMe ? 'currentColor' : 'none'}
                 />
               </button>
-              <button className="hover:text-foreground transition-colors">
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const url = `${window.location.origin}/post/${post.id}`;
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    toast.success('Link copied to clipboard');
+                  } catch {
+                    toast.error('Could not copy link');
+                  }
+                }}
+                className="hover:text-foreground transition-colors"
+              >
                 <Share className="size-4" />
               </button>
               <PostCardMenu post={post} />

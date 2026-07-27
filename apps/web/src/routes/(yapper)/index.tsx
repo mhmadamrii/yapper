@@ -18,10 +18,13 @@ export const Route = createFileRoute('/(yapper)/')({
 });
 
 function HomeComponent() {
-  const { data: session } = authClient.useSession();
   const trpc = useTRPC();
 
+  const { data: session } = authClient.useSession();
+  const { ref: loadMoreRef, inView } = useInView();
+
   const tabs = session ? ['Discover', 'Following'] : ['Discover', 'Feeds ✨'];
+
   const [activeTab, setActiveTab] = useState(0);
   const showFollowing = !!session && activeTab === 1;
 
@@ -49,8 +52,6 @@ function HomeComponent() {
 
   const postsQuery = showFollowing ? followingQuery : discoverQuery;
   const posts = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
-
-  const { ref: loadMoreRef, inView } = useInView();
 
   useEffect(() => {
     if (inView && postsQuery.hasNextPage && !postsQuery.isFetchingNextPage) {
@@ -133,9 +134,9 @@ function HomeComponent() {
             {(post) => <PostCard key={post.id} post={post} />}
           </For>
           <Show when={postsQuery.hasNextPage}>
-            <div ref={loadMoreRef}>
+            <div ref={loadMoreRef} className="min-h-10">
               <Show when={postsQuery.isFetchingNextPage}>
-                <FeedSkeleton count={2} />
+                <FeedSkeleton count={4} />
               </Show>
             </div>
           </Show>
