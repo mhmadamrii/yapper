@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
 import { SidebarLeft } from '@/components/home/sidebar-left';
 import { SidebarRight } from '@/components/home/sidebar-right';
+import { MobileNav } from '@/components/home/mobile-nav';
 
 export const Route = createFileRoute('/(yapper)')({
   component: RouteComponent,
@@ -11,10 +12,8 @@ function RouteComponent() {
   const collapsed = location.pathname.startsWith('/messages');
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-[1300px] justify-center">
-      <div className={collapsed ? 'shrink-0' : 'flex-1'}>
-        <SidebarLeft />
-      </div>
+    <div className="mx-auto flex min-h-svh max-w-[1300px] justify-center pb-16 md:pb-0">
+      <SidebarLeft />
       {collapsed ? (
         <div className="flex-1">
           <Outlet />
@@ -27,6 +26,7 @@ function RouteComponent() {
           <SidebarRight />
         </div>
       )}
+      <MobileNav />
     </div>
   );
 }

@@ -645,7 +645,7 @@ export const postRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        content: z.string().trim().min(1).max(300),
+        content: z.string().trim().min(1).max(500),
         media: z.array(mediaInput).max(4).default([]),
         replyToPostId: z.string().min(1).optional(),
         quotedPostId: z.string().min(1).optional(),

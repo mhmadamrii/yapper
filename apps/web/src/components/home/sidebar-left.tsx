@@ -38,7 +38,7 @@ import {
 
 // Everything up to "Profile" — Profile links to the signed-in user's own
 // profile (/profile/$userId), so it's rendered separately from this list.
-const navItemsBeforeProfile = [
+export const navItemsBeforeProfile = [
   { label: 'Home', icon: Home, to: '/' },
   { label: 'Explore', icon: Search, to: '/search' },
   { label: 'Notifications', icon: Bell, to: '/notifications' },
@@ -48,7 +48,7 @@ const navItemsBeforeProfile = [
   { label: 'Saved', icon: Bookmark, to: '/saved' },
 ] as const;
 
-const navItemsAfterProfile = [
+export const navItemsAfterProfile = [
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
 
@@ -58,12 +58,7 @@ export function SidebarLeft() {
   const collapsed = location.pathname.startsWith('/messages');
 
   return (
-    <aside
-      className={cn(
-        'sticky top-0 hidden h-svh flex-col py-6 md:flex',
-        collapsed ? 'w-20 items-center' : 'items-end px-6',
-      )}
-    >
+    <aside className="sticky top-0 hidden h-svh flex-col items-start py-6 pl-10 pr-6 md:flex">
       <div
         className={cn(
           'flex flex-col gap-1',
@@ -85,35 +80,54 @@ export function SidebarLeft() {
   );
 }
 
-interface AccountUser {
+export interface AccountUser {
   id: string;
   name: string;
   image?: string | null;
   username?: string | null;
 }
 
-function AccountChip({ user }: { user: AccountUser }) {
+function AccountChip({
+  user,
+  collapsed,
+}: {
+  user: AccountUser;
+  collapsed?: boolean;
+}) {
   const navigate = useNavigate();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <button className="group hover:bg-accent aria-expanded:bg-accent mb-4 flex h-14 w-full items-center gap-2.5 rounded-full p-1 transition-colors hover:pr-3 aria-expanded:pr-3" />
+          <button
+            className={cn(
+              'group hover:bg-accent aria-expanded:bg-accent mb-4 flex h-14 w-full items-center gap-2.5 rounded-full p-1 transition-colors',
+              !collapsed && 'hover:pr-3 aria-expanded:pr-3',
+            )}
+          />
         }
       >
         <UserAvatar
           name={user.name}
           image={user.image}
-          className="size-12 shrink-0 transition-[width,height] duration-200 group-hover:size-9 group-aria-expanded:size-9"
+          className={cn(
+            'size-12 shrink-0',
+            !collapsed &&
+              'transition-[width,height] duration-200 group-hover:size-9 group-aria-expanded:size-9',
+          )}
         />
-        <span className="hidden min-w-0 flex-1 flex-col text-left group-hover:flex group-aria-expanded:flex">
-          <span className="truncate text-sm font-bold">{user.name}</span>
-          <span className="text-muted-foreground truncate text-xs">
-            @{user.username ?? 'unknown'}
-          </span>
-        </span>
-        <Ellipsis className="text-muted-foreground hidden size-4 shrink-0 group-hover:block group-aria-expanded:block" />
+        {!collapsed && (
+          <>
+            <span className="hidden min-w-0 flex-1 flex-col text-left group-hover:flex group-aria-expanded:flex">
+              <span className="truncate text-sm font-bold">{user.name}</span>
+              <span className="text-muted-foreground truncate text-xs">
+                @{user.username ?? 'unknown'}
+              </span>
+            </span>
+            <Ellipsis className="text-muted-foreground hidden size-4 shrink-0 group-hover:block group-aria-expanded:block" />
+          </>
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="bg-card w-56">
@@ -175,7 +189,7 @@ function LoggedInNav({
 
   return (
     <nav className="flex flex-col gap-1">
-      <AccountChip user={user} />
+      <AccountChip user={user} collapsed={collapsed} />
 
       {navItemsBeforeProfile.map(({ label, icon: Icon, to }) => (
         <Link
@@ -264,7 +278,7 @@ function LoggedInNav({
   );
 }
 
-function LoggedOutPanel() {
+export function LoggedOutPanel() {
   return (
     <div className="flex flex-col gap-6 pt-4">
       <img src="/yapper-logo.png" alt="Yapper" className="size-10" />

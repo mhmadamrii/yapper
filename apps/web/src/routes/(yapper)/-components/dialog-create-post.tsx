@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from '@yapper/ui/components/dialog';
 
-const MAX_POST_LENGTH = 300;
+const MAX_POST_LENGTH = 500;
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
