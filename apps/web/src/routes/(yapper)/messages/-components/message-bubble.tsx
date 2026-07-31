@@ -1,4 +1,9 @@
+import type { AppRouter } from '@yapper/api/routers/index';
+import type { inferRouterOutputs } from '@trpc/server';
+
 import { Bubble, BubbleContent } from '@yapper/ui/components/bubble';
+import { UserAvatar } from '@/components/user-avatar';
+import { timeAgo } from '@/lib/utils';
 
 import {
   Message,
@@ -7,14 +12,7 @@ import {
   MessageFooter,
 } from '@yapper/ui/components/message';
 
-import { UserAvatar } from '@/components/user-avatar';
-import { timeAgo } from '@/lib/utils';
-
-import type { AppRouter } from '@yapper/api/routers/index';
-import type { inferRouterOutputs } from '@trpc/server';
-
-type MessageItem =
-  inferRouterOutputs<AppRouter>['message']['thread']['items'][number];
+type MessageItem = inferRouterOutputs<AppRouter>['message']['thread']['items'][number]; // prettier-ignore
 
 export function MessageBubble({
   message,

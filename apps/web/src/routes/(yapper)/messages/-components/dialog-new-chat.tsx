@@ -5,6 +5,9 @@ import { toast } from '@/lib/toast';
 import { Check, Users, X } from 'lucide-react';
 import { Button } from '@yapper/ui/components/button';
 import { Input } from '@yapper/ui/components/input';
+import { For, Show, Switch, Match } from '@/components/control-flow';
+import { UserAvatar } from '@/components/user-avatar';
+import { useTRPC } from '@/utils/trpc';
 
 import {
   Dialog,
@@ -14,10 +17,6 @@ import {
   DialogTrigger,
 } from '@yapper/ui/components/dialog';
 
-import { For, Show, Switch, Match } from '@/components/control-flow';
-import { UserAvatar } from '@/components/user-avatar';
-import { useTRPC } from '@/utils/trpc';
-
 interface Person {
   id: string;
   name: string;
@@ -26,19 +25,15 @@ interface Person {
 }
 
 export function DialogNewChat({ trigger }: { trigger: React.ReactElement }) {
+  const navigate = useNavigate();
+  const trpc = useTRPC();
+
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'direct' | 'group'>('direct');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [groupName, setGroupName] = useState('');
   const [selected, setSelected] = useState<Map<string, Person>>(new Map());
-  const navigate = useNavigate();
-  const trpc = useTRPC();
-
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(query.trim()), 250);
-    return () => clearTimeout(id);
-  }, [query]);
 
   const searchQuery = useQuery(
     trpc.message.searchRecipients.queryOptions(
@@ -105,6 +100,11 @@ export function DialogNewChat({ trigger }: { trigger: React.ReactElement }) {
   };
 
   const canCreateGroup = groupName.trim().length > 0 && selected.size > 0;
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
 
   return (
     <Dialog

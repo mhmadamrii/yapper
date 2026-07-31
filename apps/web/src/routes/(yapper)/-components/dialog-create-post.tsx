@@ -1,4 +1,5 @@
 import { authClient } from '@/lib/auth-client';
+import { cn } from '@yapper/ui/lib/utils';
 import { imageKitUrl, uploadToImageKit } from '@/lib/imagekit';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
@@ -70,8 +71,7 @@ export function DialogCreatePost({
 
   const totalImages = images.length + existingMedia.length;
   const remaining = MAX_POST_LENGTH - text.length;
-  const canSubmit =
-    !isPosting && remaining >= 0 && (text.trim().length > 0 || totalImages > 0);
+  const canSubmit = !isPosting && remaining >= 0 && (text.trim().length > 0 || totalImages > 0); // prettier-ignore
 
   // Restores to the last-saved state, not always blank — for an
   // edit-in-progress draft, that's the original draft content, so
@@ -206,7 +206,6 @@ export function DialogCreatePost({
       }}
     >
       <DialogTrigger render={trigger} />
-
       <DialogContent
         showCloseButton={false}
         className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 gap-0 overflow-y-auto p-0 sm:max-w-xl"
@@ -348,11 +347,9 @@ export function DialogCreatePost({
               English
             </button>
             <span
-              className={
-                remaining < 0
-                  ? 'text-destructive text-sm'
-                  : 'text-muted-foreground text-sm'
-              }
+              className={cn('text-muted-foreground text-sm', {
+                'text-destructive text-sm': remaining < 0,
+              })}
             >
               {remaining}
             </span>

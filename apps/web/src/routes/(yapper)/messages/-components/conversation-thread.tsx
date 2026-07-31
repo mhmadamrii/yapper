@@ -1,5 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
+import { For, Show } from '@/components/control-flow';
+import { useTRPC } from '@/utils/trpc';
+import { MessageBubble } from './message-bubble';
 
 import {
   MessageScroller,
@@ -9,10 +12,6 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@yapper/ui/components/message-scroller';
-
-import { For, Show } from '@/components/control-flow';
-import { useTRPC } from '@/utils/trpc';
-import { MessageBubble } from './message-bubble';
 
 export function ConversationThread({
   conversationId,
@@ -75,7 +74,6 @@ export function ConversationThread({
             </For>
           </MessageScrollerContent>
         </MessageScrollerViewport>
-
         <MessageScrollerButton direction="end" />
       </MessageScroller>
     </MessageScrollerProvider>

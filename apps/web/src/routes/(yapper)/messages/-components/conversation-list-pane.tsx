@@ -1,11 +1,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { cn } from '@yapper/ui/lib/utils';
 import { Link, useParams } from '@tanstack/react-router';
 import { Inbox, PencilLine, Settings } from 'lucide-react';
 import { Button } from '@yapper/ui/components/button';
-
 import { Empty, EmptyMedia, EmptyTitle } from '@yapper/ui/components/empty';
 import { Skeleton } from '@yapper/ui/components/skeleton';
-
 import { For, Show, Switch, Match } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { authClient } from '@/lib/auth-client';
@@ -16,8 +15,7 @@ import { DialogNewChat } from './dialog-new-chat';
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
-type ConversationItem =
-  inferRouterOutputs<AppRouter>['message']['list']['items'][number];
+type ConversationItem = inferRouterOutputs<AppRouter>['message']['list']['items'][number]; // prettier-ignore
 
 export function ConversationListPane() {
   const trpc = useTRPC();
@@ -137,9 +135,12 @@ function ConversationRow({
     <Link
       to="/messages/$conversationId"
       params={{ conversationId: conversation.id }}
-      className={`hover:bg-accent/50 flex items-center gap-3 px-4 py-3 transition-colors ${
-        active ? 'bg-accent' : ''
-      }`}
+      className={cn(
+        'hover:bg-accent/50 flex items-center gap-3 px-4 py-3 transition-colors',
+        {
+          'bg-accent': active,
+        },
+      )}
     >
       <UserAvatar name={name} image={image} className="size-12 shrink-0" />
       <div className="min-w-0 flex-1">

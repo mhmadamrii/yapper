@@ -1,19 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
-import { Button } from '@yapper/ui/components/button';
-import { FileText, Send, Trash2 } from 'lucide-react';
-import { toast } from '@/lib/toast';
-
-import { For, Show } from '@/components/control-flow';
-import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
-import {
-  DialogCreateReply,
-  type ReplyTarget,
-} from '@/routes/(yapper)/-components/dialog-create-reply';
 import { imageKitUrl } from '@/lib/imagekit';
 import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
+import { createFileRoute } from '@tanstack/react-router';
+import { Button } from '@yapper/ui/components/button';
+import { FileText, Send, Trash2 } from 'lucide-react';
+import { toast } from '@/lib/toast';
+import { For, Show } from '@/components/control-flow';
+import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
+
+import {
+  DialogCreateReply,
+  type ReplyTarget,
+} from '@/routes/(yapper)/-components/dialog-create-reply';
 
 export const Route = createFileRoute('/(yapper)/drafts/')({
   head: () => ({ meta: seo({ title: 'Drafts' }) }),
@@ -28,8 +28,7 @@ function DraftsPage() {
   const publishDraft = useMutation(trpc.draft.publish.mutationOptions());
   const deleteDraft = useMutation(trpc.draft.delete.mutationOptions());
 
-  const invalidateDrafts = () =>
-    queryClient.invalidateQueries({ queryKey: trpc.draft.list.queryKey() });
+  const invalidateDrafts = () => queryClient.invalidateQueries({ queryKey: trpc.draft.list.queryKey() }); // prettier-ignore
 
   const handlePublish = async (id: string) => {
     try {

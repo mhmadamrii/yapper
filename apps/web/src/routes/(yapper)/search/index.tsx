@@ -2,7 +2,6 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { Input } from '@yapper/ui/components/input';
 import { Flame, LayoutGrid, Search, X } from 'lucide-react';
 import { useState } from 'react';
-
 import { For, Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { seo } from '@/lib/seo';

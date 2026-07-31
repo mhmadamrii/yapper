@@ -3,7 +3,6 @@ import { Button } from '@yapper/ui/components/button';
 import { cn } from '@yapper/ui/lib/utils';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
-
 import { For } from '@/components/control-flow';
 import { seo } from '@/lib/seo';
 import { interestTags } from '../-dummy-explore';

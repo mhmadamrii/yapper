@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { MessageCircle, Plus } from 'lucide-react';
 import { Button } from '@yapper/ui/components/button';
+import { seo } from '@/lib/seo';
+import { DialogNewChat } from './-components/dialog-new-chat';
 
 import {
   Empty,
@@ -9,9 +11,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@yapper/ui/components/empty';
-
-import { seo } from '@/lib/seo';
-import { DialogNewChat } from './-components/dialog-new-chat';
 
 export const Route = createFileRoute('/(yapper)/messages/')({
   head: () => ({ meta: seo({ title: 'Messages' }) }),

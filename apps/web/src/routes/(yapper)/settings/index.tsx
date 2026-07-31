@@ -1,9 +1,15 @@
+import { Button } from '@yapper/ui/components/button';
+import { For, Show } from '@/components/control-flow';
+import { UserAvatar } from '@/components/user-avatar';
+import { authClient } from '@/lib/auth-client';
+import { seo } from '@/lib/seo';
+
 import {
   createFileRoute,
   useNavigate,
   useRouter,
 } from '@tanstack/react-router';
-import { Button } from '@yapper/ui/components/button';
+
 import {
   Accessibility,
   ArrowLeft,
@@ -21,18 +27,11 @@ import {
   UserPlus,
 } from 'lucide-react';
 
-import { For, Show } from '@/components/control-flow';
-import { UserAvatar } from '@/components/user-avatar';
-import { authClient } from '@/lib/auth-client';
-import { seo } from '@/lib/seo';
-
 export const Route = createFileRoute('/(yapper)/settings/')({
   head: () => ({ meta: seo({ title: 'Settings' }) }),
   component: SettingsPage,
 });
 
-// Rows are visual-only for now (matches Bluesky's settings layout) — only
-// "Sign out" below is wired up, per the current scope.
 const SETTINGS_ROWS = [
   { label: 'Account', icon: User },
   { label: 'Privacy and security', icon: Lock },
@@ -64,7 +63,6 @@ function SettingsPage() {
         </Button>
         <h1 className="font-bold">Settings</h1>
       </header>
-
       <Show
         when={!isPending && session}
         fallback={
@@ -86,7 +84,6 @@ function SettingsPage() {
                 @{s.user.username ?? 'unknown'}
               </p>
             </div>
-
             <button
               onClick={() => navigate({ to: '/auth' })}
               className="hover:bg-accent/50 border-border flex w-full items-center gap-4 border-b px-4 py-3.5 text-left transition-colors"
@@ -94,7 +91,6 @@ function SettingsPage() {
               <UserPlus className="size-5" />
               <span className="font-medium">Add another account</span>
             </button>
-
             <div className="border-border border-b">
               <For each={SETTINGS_ROWS}>
                 {({ label, icon: Icon }) => (
@@ -109,7 +105,6 @@ function SettingsPage() {
                 )}
               </For>
             </div>
-
             <button
               onClick={() =>
                 authClient.signOut({

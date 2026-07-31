@@ -11,6 +11,7 @@ import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { useTRPC } from '@/utils/trpc';
 import { seo } from '@/lib/seo';
+import { cn } from '@yapper/ui/lib/utils';
 
 export const Route = createFileRoute('/(yapper)/')({
   head: () => ({ meta: seo({ title: 'Discover' }) }),
@@ -68,7 +69,6 @@ function HomeComponent() {
             <Hash className="text-muted-foreground absolute right-4 size-5" />
           </div>
         </Show>
-
         <nav className="flex">
           <For each={tabs}>
             {(tab, i) => (
@@ -78,11 +78,9 @@ function HomeComponent() {
                 className="hover:bg-accent/50 flex-1 py-3 text-sm font-semibold transition-colors"
               >
                 <span
-                  className={
-                    activeTab === i
-                      ? 'border-primary border-b-2 pb-3'
-                      : 'text-muted-foreground'
-                  }
+                  className={cn('text-muted-foreground', {
+                    'border-primary border-b-2 pb-3': activeTab === i,
+                  })}
                 >
                   {tab}
                 </span>

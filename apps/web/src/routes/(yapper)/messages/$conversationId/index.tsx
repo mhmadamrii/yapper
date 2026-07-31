@@ -6,7 +6,6 @@ import { useConversationStream } from '@/lib/use-conversation-stream';
 import { useDocumentTitle } from '@/lib/use-document-title';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
-
 import { Match, Show, Switch } from '@/components/control-flow';
 import { ConversationThread } from '../-components/conversation-thread';
 import { GroupSettingsDropdown } from '../-components/group-settings-dropdown';
@@ -34,6 +33,7 @@ function ConversationPage() {
       },
     ),
   );
+
   const conversationMeta = listQuery.data?.pages
     .flatMap((page) => page.items)
     .find((item) => item.id === conversationId);
@@ -45,6 +45,7 @@ function ConversationPage() {
     (isGroup
       ? conversationMeta?.peers.map((p) => p.name).join(', ')
       : peer?.name);
+
   useDocumentTitle(title);
 
   return (
@@ -87,7 +88,6 @@ function ConversationPage() {
             </Match>
           </Switch>
         </div>
-
         <Show when={isGroup}>
           <GroupSettingsDropdown
             conversationId={conversationId}
@@ -96,7 +96,6 @@ function ConversationPage() {
           />
         </Show>
       </header>
-
       <ConversationThread
         conversationId={conversationId}
         currentUserId={session?.user.id}

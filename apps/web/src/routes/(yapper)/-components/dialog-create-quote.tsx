@@ -168,7 +168,6 @@ export function DialogCreateQuote({
               {isPosting ? 'Posting...' : 'Post'}
             </Button>
           </div>
-
           <div className="flex gap-3 px-4 pb-4">
             <UserAvatar
               name={session?.user.name ?? 'You'}
@@ -210,7 +209,6 @@ export function DialogCreateQuote({
               <QuotedPostPreview post={post} />
             </div>
           </div>
-
           <div className="border-border flex items-center justify-between border-t px-4 py-3">
             <div className="text-primary flex items-center gap-1">
               <input

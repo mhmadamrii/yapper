@@ -2,7 +2,6 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { ArrowLeft, Bookmark } from 'lucide-react';
-
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { authClient } from '@/lib/auth-client';

@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
+import { Button } from '@yapper/ui/components/button';
+import { Input } from '@yapper/ui/components/input';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from '@/lib/toast';
+import { For, Show } from '@/components/control-flow';
+import { UserAvatar } from '@/components/user-avatar';
+import { useTRPC } from '@/utils/trpc';
+
 import {
   LogOut,
   MoreVertical,
@@ -9,8 +15,6 @@ import {
   UserMinus,
   UserPlus,
 } from 'lucide-react';
-import { Button } from '@yapper/ui/components/button';
-import { Input } from '@yapper/ui/components/input';
 
 import {
   Dialog,
@@ -25,10 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@yapper/ui/components/dropdown-menu';
-
-import { For, Show } from '@/components/control-flow';
-import { UserAvatar } from '@/components/user-avatar';
-import { useTRPC } from '@/utils/trpc';
 
 interface Person {
   id: string;
