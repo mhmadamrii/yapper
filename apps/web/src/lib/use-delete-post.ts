@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-
 import { useTRPC } from '@/utils/trpc';
 
 interface PostShape {

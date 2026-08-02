@@ -11,7 +11,7 @@ import { VerifiedBadge } from '@/components/verified-badge';
 import { authClient } from '@/lib/auth-client';
 import { imageKitUrl } from '@/lib/imagekit';
 import { seo } from '@/lib/seo';
-import { useDocumentTitle } from '@/lib/use-document-title';
+import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetRepost } from '@/lib/use-set-repost';

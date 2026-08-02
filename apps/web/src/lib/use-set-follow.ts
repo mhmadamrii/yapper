@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-
 import { authClient } from '@/lib/auth-client';
 import { useTRPC } from '@/utils/trpc';
 

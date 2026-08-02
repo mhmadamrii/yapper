@@ -14,7 +14,7 @@ import { useSetFollow } from '@/lib/use-set-follow';
 import { DialogEditProfile } from '@/routes/(yapper)/-components/dialog-edit-profile';
 import { seo } from '@/lib/seo';
 import { formatCount } from '@/lib/utils';
-import { useDocumentTitle } from '@/lib/use-document-title';
+import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { useTRPC } from '@/utils/trpc';
 

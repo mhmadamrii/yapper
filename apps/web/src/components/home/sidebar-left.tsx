@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { LINK_CLASSNAME } from '@/lib/constants';
 import { Link, useNavigate, useLocation } from '@tanstack/react-router';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
@@ -35,6 +36,13 @@ import {
   Settings,
   User,
 } from 'lucide-react';
+
+export interface AccountUser {
+  id: string;
+  name: string;
+  image?: string | null;
+  username?: string | null;
+}
 
 // Everything up to "Profile" — Profile links to the signed-in user's own
 // profile (/profile/$userId), so it's rendered separately from this list.
@@ -78,13 +86,6 @@ export function SidebarLeft() {
       </div>
     </aside>
   );
-}
-
-export interface AccountUser {
-  id: string;
-  name: string;
-  image?: string | null;
-  username?: string | null;
 }
 
 function AccountChip({
@@ -184,9 +185,6 @@ function LoggedInNav({
   );
   const unreadMessagesCount = unreadMessagesQuery.data?.count ?? 0;
 
-  const linkClassName =
-    'hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors';
-
   return (
     <nav className="flex flex-col gap-1">
       <AccountChip user={user} collapsed={collapsed} />
@@ -195,7 +193,7 @@ function LoggedInNav({
         <Link
           key={label}
           to={to}
-          className={linkClassName}
+          className={LINK_CLASSNAME}
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >
@@ -222,7 +220,7 @@ function LoggedInNav({
       <Link
         to="/profile/$userId"
         params={{ userId: user.id }}
-        className={linkClassName}
+        className={LINK_CLASSNAME}
         activeProps={{ className: 'font-bold' }}
       >
         {({ isActive }) => (
@@ -240,7 +238,7 @@ function LoggedInNav({
         <Link
           key={label}
           to={to}
-          className={linkClassName}
+          className={LINK_CLASSNAME}
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >

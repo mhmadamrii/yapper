@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
-
 import { Match, Show, Switch } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
@@ -31,18 +30,18 @@ export function ProfileHoverCard({
   userId: string;
   children: React.ReactElement;
 }) {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const trpc = useTRPC();
-  const { data: session } = authClient.useSession();
   const setFollow = useSetFollow();
+  const trpc = useTRPC();
+
+  const [open, setOpen] = useState(false);
+  const { data: session } = authClient.useSession();
 
   const userQuery = useQuery(
     trpc.user.byId.queryOptions({ id: userId }, { enabled: open }),
   );
 
-  const goToProfile = () =>
-    navigate({ to: '/profile/$userId', params: { userId } });
+  const goToProfile = () => navigate({ to: '/profile/$userId', params: { userId } }); // prettier-ignore
 
   return (
     <HoverCard open={open} onOpenChange={setOpen}>

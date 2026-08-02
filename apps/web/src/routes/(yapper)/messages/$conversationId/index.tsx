@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth-client';
 import { seo } from '@/lib/seo';
 import { useConversationStream } from '@/lib/use-conversation-stream';
-import { useDocumentTitle } from '@/lib/use-document-title';
+import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
 import { Match, Show, Switch } from '@/components/control-flow';

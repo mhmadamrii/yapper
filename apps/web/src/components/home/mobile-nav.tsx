@@ -1,12 +1,13 @@
 import { useState } from 'react';
+import { LINK_CLASSNAME } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Bell, Home, LogOut, Menu, MessageCircle, Search } from 'lucide-react';
-
 import { authClient } from '@/lib/auth-client';
 import { useTRPC } from '@/utils/trpc';
 import { UserAvatar } from '@/components/user-avatar';
 import { Show, For } from '@/components/control-flow';
+
 import {
   navItemsAfterProfile,
   navItemsBeforeProfile,
@@ -118,8 +119,6 @@ export function MobileNav() {
 
 function DrawerNavContent({ user }: { user: AccountUser }) {
   const navigate = useNavigate();
-  const linkClassName =
-    'hover:bg-accent flex items-center gap-4 rounded-full px-3 py-2.5 text-lg font-medium transition-colors';
 
   return (
     <div className="flex flex-col gap-1">
@@ -140,7 +139,6 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
           </span>
         </span>
       </DrawerClose>
-
       <For each={navItemsBeforeProfile}>
         {(item) => (
           <DrawerClose
@@ -148,7 +146,7 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
             render={
               <Link
                 to={item.to}
-                className={linkClassName}
+                className={LINK_CLASSNAME}
                 activeProps={{ className: 'font-bold' }}
                 activeOptions={{ exact: true }}
               />
@@ -159,13 +157,12 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
           </DrawerClose>
         )}
       </For>
-
       <DrawerClose
         render={
           <Link
             to="/profile/$userId"
             params={{ userId: user.id }}
-            className={linkClassName}
+            className={LINK_CLASSNAME}
             activeProps={{ className: 'font-bold' }}
           />
         }
@@ -173,7 +170,6 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
         <UserAvatar name={user.name} image={user.image} className="size-6" />
         Profile
       </DrawerClose>
-
       <For each={navItemsAfterProfile}>
         {(item) => (
           <DrawerClose
@@ -181,7 +177,7 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
             render={
               <Link
                 to={item.to}
-                className={linkClassName}
+                className={LINK_CLASSNAME}
                 activeProps={{ className: 'font-bold' }}
                 activeOptions={{ exact: true }}
               />
@@ -192,9 +188,8 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
           </DrawerClose>
         )}
       </For>
-
       <button
-        className={linkClassName}
+        className={LINK_CLASSNAME}
         onClick={() =>
           authClient.signOut({
             fetchOptions: { onSuccess: () => navigate({ to: '/' }) },

@@ -2,6 +2,8 @@ import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
 import { useState } from 'react';
+import { Show, For } from '@/components/control-flow';
+import { cn } from '@yapper/ui/lib/utils';
 import { imageKitUrl } from '@/lib/imagekit';
 import { MentionText } from '@/components/mention-text';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
@@ -53,11 +55,21 @@ export function PostCard({
   const [quoteOpen, setQuoteOpen] = useState(false);
   const handle = post.author.username ?? 'unknown';
 
+  const handleArticleClick = () => {
+    navigate({ to: '/post/$postId', params: { postId: post.id } });
+  };
+
+  const handleProfileClick = (e: any) => {
+    e.stopPropagation();
+    navigate({
+      to: '/profile/$userId',
+      params: { userId: post.author.id },
+    });
+  };
+
   return (
     <article
-      onClick={() =>
-        navigate({ to: '/post/$postId', params: { postId: post.id } })
-      }
+      onClick={handleArticleClick}
       className={`hover:bg-accent/30 cursor-pointer px-4 py-3 transition-colors ${
         threadLine ? '' : 'border-border border-b'
       }`}
@@ -70,13 +82,7 @@ export function PostCard({
         >
           <ProfileHoverCard userId={post.author.id}>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate({
-                  to: '/profile/$userId',
-                  params: { userId: post.author.id },
-                });
-              }}
+              onClick={(e) => handleProfileClick(e)}
               className="h-fit shrink-0"
             >
               <UserAvatar
@@ -86,7 +92,9 @@ export function PostCard({
               />
             </button>
           </ProfileHoverCard>
-          {threadLine && <div className="bg-border mt-1 -mb-3 w-px flex-1" />}
+          <Show when={threadLine}>
+            <div className="bg-border mt-1 -mb-3 w-px flex-1" />
+          </Show>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1 text-sm">
@@ -102,7 +110,9 @@ export function PostCard({
                 className="flex min-w-0 items-center gap-1 font-bold hover:underline"
               >
                 <span className="truncate">{post.author.name}</span>
-                {post.author.emailVerified && <VerifiedBadge />}
+                <Show when={post.author.emailVerified}>
+                  <VerifiedBadge />
+                </Show>
               </button>
             </ProfileHoverCard>
             <span className="text-muted-foreground truncate">@{handle}</span>
@@ -113,7 +123,7 @@ export function PostCard({
           <p className="mt-0.5 text-[15px] leading-normal whitespace-pre-wrap">
             <MentionText text={post.content} />
           </p>
-          {post.media.length > 0 && (
+          <Show when={post.media.length > 0}>
             <div
               className={
                 post.media.length === 1
@@ -121,30 +131,34 @@ export function PostCard({
                   : 'mt-3 grid grid-cols-2 gap-1.5'
               }
             >
-              {post.media.map((m) => (
-                <img
-                  key={m.id}
-                  src={imageKitUrl(m.filePath, 'w-1200,f-auto,q-auto')}
-                  alt={m.altText ?? ''}
-                  width={m.width}
-                  height={m.height}
-                  loading="lazy"
-                  className="border-border max-h-[420px] w-full rounded-xl border object-cover"
-                />
-              ))}
+              <For each={post.media}>
+                {(m) => (
+                  <img
+                    key={m.id}
+                    src={imageKitUrl(m.filePath, 'w-1200,f-auto,q-auto')}
+                    alt={m.altText ?? ''}
+                    width={m.width}
+                    height={m.height}
+                    loading="lazy"
+                    className="border-border max-h-105 w-full rounded-xl border object-cover"
+                  />
+                )}
+              </For>
             </div>
-          )}
-          {post.quotedPost && (
-            <QuotedPostPreview
-              post={post.quotedPost}
-              onClick={() =>
-                navigate({
-                  to: '/post/$postId',
-                  params: { postId: post.quotedPost!.id },
-                })
-              }
-            />
-          )}
+          </Show>
+          <Show when={post.quotedPost}>
+            {(quotedPost) => (
+              <QuotedPostPreview
+                post={quotedPost}
+                onClick={() =>
+                  navigate({
+                    to: '/post/$postId',
+                    params: { postId: quotedPost.id },
+                  })
+                }
+              />
+            )}
+          </Show>
           <div className="text-muted-foreground mt-3 flex items-center justify-between text-sm">
             <DialogCreateReply
               post={post}
@@ -206,13 +220,13 @@ export function PostCard({
             </button>
             <div className="flex items-center justify-between gap-2 w-[20%]">
               <button
+                className={cn('hover:text-foreground transition-colors ', {
+                  'text-primary': post.savedByMe,
+                })}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSave(post.id, !post.savedByMe);
                 }}
-                className={`hover:text-foreground transition-colors ${
-                  post.savedByMe ? 'text-primary' : ''
-                }`}
               >
                 <Bookmark
                   className="size-4"
