@@ -2,6 +2,7 @@ import { Button } from '@yapper/ui/components/button';
 import { For, Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { authClient } from '@/lib/auth-client';
+import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 
 import {
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 
 export const Route = createFileRoute('/(yapper)/settings/')({
+  beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Settings' }) }),
   component: SettingsPage,
 });

@@ -5,11 +5,13 @@ import { ArrowLeft, Bookmark } from 'lucide-react';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { authClient } from '@/lib/auth-client';
+import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { useTRPC } from '@/utils/trpc';
 
 export const Route = createFileRoute('/(yapper)/saved/')({
+  beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Saved' }) }),
   component: SavedPage,
 });

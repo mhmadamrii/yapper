@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { imageKitUrl } from '@/lib/imagekit';
+import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
@@ -16,6 +17,7 @@ import {
 } from '@/routes/(yapper)/-components/dialog-create-reply';
 
 export const Route = createFileRoute('/(yapper)/drafts/')({
+  beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Drafts' }) }),
   component: DraftsPage,
 });

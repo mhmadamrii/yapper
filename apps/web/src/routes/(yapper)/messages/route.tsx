@@ -1,7 +1,9 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { requireSession } from '@/lib/route-guards';
 import { ConversationListPane } from './-components/conversation-list-pane';
 
 export const Route = createFileRoute('/(yapper)/messages')({
+  beforeLoad: () => requireSession(),
   component: RouteComponent,
 });
 

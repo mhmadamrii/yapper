@@ -8,6 +8,7 @@ import { MentionText } from '@/components/mention-text';
 import { UserAvatar } from '@/components/user-avatar';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { authClient } from '@/lib/auth-client';
+import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
@@ -29,6 +30,7 @@ type NotificationItem =
 const TABS = ['All', 'Mentions'] as const;
 
 export const Route = createFileRoute('/(yapper)/notifications/')({
+  beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Notifications' }) }),
   component: NotificationsPage,
 });
