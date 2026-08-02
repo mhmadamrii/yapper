@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
-
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { MentionText } from '@/components/mention-text';
 import { UserAvatar } from '@/components/user-avatar';
@@ -24,8 +23,7 @@ import {
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
-type NotificationItem =
-  inferRouterOutputs<AppRouter>['notification']['list']['items'][number];
+type NotificationItem = inferRouterOutputs<AppRouter>['notification']['list']['items'][number]; // prettier-ignore
 
 const TABS = ['All', 'Mentions'] as const;
 

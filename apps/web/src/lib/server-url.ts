@@ -25,5 +25,5 @@ export function getServerUrl(url: string) {
     return `${origin}${normalized}`;
   }
 
-  return `http://localhost:3000${normalized}`;
+  return `http://localhost:3001${normalized}`;
 }

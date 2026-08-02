@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { env } from '@yapper/env/web';
 import { useTRPC } from '@/utils/trpc';
 import { getServerUrl } from './server-url';
 
@@ -33,7 +32,10 @@ export function useConversationStream(conversationId: string | undefined) {
   useEffect(() => {
     if (!conversationId) return;
 
-    const url = `${getServerUrl(env.VITE_SERVER_URL)}/conversations/${conversationId}/stream`;
+    // Routed through the web app's own /api/conversations/$id/stream proxy
+    // (not the Workers domain directly) so the session cookie — now scoped
+    // to this app's origin via the /api/auth proxy — is actually sent.
+    const url = getServerUrl(`/api/conversations/${conversationId}/stream`);
     const source = new EventSource(url, { withCredentials: true });
 
     source.onmessage = (event) => {
