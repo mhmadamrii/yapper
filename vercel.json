@@ -9,6 +9,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/auth/(.*)",
+      "destination": "https://yapper-server-amri.interceptorghost4.workers.dev/api/auth/$1"
+    },
+    {
+      "source": "/trpc/(.*)",
+      "destination": "https://yapper-server-amri.interceptorghost4.workers.dev/trpc/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": {
         "service": "web"
