@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { Show } from '@/components/control-flow';
 import { SidebarLeft } from '@/components/home/sidebar-left';
 import { SidebarRight } from '@/components/home/sidebar-right';
 import { MobileNav } from '@/components/home/mobile-nav';
@@ -12,20 +13,18 @@ function RouteComponent() {
   const collapsed = location.pathname.startsWith('/messages');
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-[1300px] justify-center pb-16 md:pb-0">
+    <div className="mx-auto flex min-h-svh max-w-325 justify-center pb-16 md:pb-0">
       <SidebarLeft />
-      {collapsed ? (
+      <Show when={collapsed} fallback={<Outlet />}>
         <div className="flex-1">
           <Outlet />
         </div>
-      ) : (
-        <Outlet />
-      )}
-      {!collapsed && (
+      </Show>
+      <Show when={!collapsed}>
         <div className="flex-1">
           <SidebarRight />
         </div>
-      )}
+      </Show>
       <MobileNav />
     </div>
   );
