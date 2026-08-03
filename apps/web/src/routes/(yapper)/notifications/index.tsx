@@ -26,17 +26,41 @@ import type { inferRouterOutputs } from '@trpc/server';
 type NotificationItem = inferRouterOutputs<AppRouter>['notification']['list']['items'][number]; // prettier-ignore
 
 const TABS = ['All', 'Mentions'] as const;
+const TYPE_META = {
+  like: {
+    icon: <Heart className="size-6 fill-rose-500 text-rose-500" />,
+    action: 'liked your post',
+  },
+  repost: {
+    icon: <Repeat2 className="size-6 text-green-500" />,
+    action: 'reposted your post',
+  },
+  reply: {
+    icon: <MessageCircle className="text-primary size-6" />,
+    action: 'replied to your post',
+  },
+  follow: {
+    icon: <UserPlus className="text-primary size-6" />,
+    action: 'followed you',
+  },
+} as const;
 
 export const Route = createFileRoute('/(yapper)/notifications/')({
   beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Notifications' }) }),
   component: NotificationsPage,
+  pendingComponent: () => (
+    <section className="border-border min-h-svh w-full max-w-[640px] border-x">
+      <FeedSkeleton />
+    </section>
+  ),
 });
 
 function NotificationsPage() {
-  const [activeTab, setActiveTab] = useState(0);
   const trpc = useTRPC();
   const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState(0);
   const { data: session, isPending: sessionPending } = authClient.useSession();
 
   const notificationsQuery = useInfiniteQuery(
@@ -57,8 +81,7 @@ function NotificationsPage() {
     }),
   );
 
-  const notifications =
-    notificationsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const notifications = notificationsQuery.data?.pages.flatMap((page) => page.items) ?? []; // prettier-ignore
   const hasUnread = notifications.some((n) => !n.readAt);
 
   function handleRowClick(notification: NotificationItem) {
@@ -187,25 +210,6 @@ function NotificationsPage() {
     </main>
   );
 }
-
-const TYPE_META = {
-  like: {
-    icon: <Heart className="size-6 fill-rose-500 text-rose-500" />,
-    action: 'liked your post',
-  },
-  repost: {
-    icon: <Repeat2 className="size-6 text-green-500" />,
-    action: 'reposted your post',
-  },
-  reply: {
-    icon: <MessageCircle className="text-primary size-6" />,
-    action: 'replied to your post',
-  },
-  follow: {
-    icon: <UserPlus className="text-primary size-6" />,
-    action: 'followed you',
-  },
-} as const;
 
 function NotificationRow({
   notification,

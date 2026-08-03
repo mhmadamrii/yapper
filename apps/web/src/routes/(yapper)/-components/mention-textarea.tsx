@@ -130,6 +130,16 @@ export function MentionTextarea({
     setCoords(getCaretCoordinates(textareaRef.current, mention.start));
   }, [mention?.start, value]);
 
+  // Grows the textarea to fit its content instead of scrolling internally —
+  // 'auto' first so scrollHeight reflects the `rows` floor (or less, if
+  // content shrank) rather than the previously-set explicit height.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value, rows]);
+
   const searchQuery = useQuery(
     trpc.user.search.queryOptions(
       { query: debouncedQuery },
@@ -214,7 +224,7 @@ export function MentionTextarea({
         onBlur={() => setDismissed(true)}
         placeholder={placeholder}
         rows={rows}
-        className={`relative text-transparent caret-foreground ${className ?? ''}`}
+        className={`relative overflow-hidden text-transparent caret-foreground ${className ?? ''}`}
       />
 
       <Show when={showDropdown && coords}>
