@@ -80,7 +80,7 @@ function PostDetailPage() {
   );
 
   return (
-    <main className="border-border min-h-svh w-full max-w-[640px] border-x">
+    <main className="border-border min-h-svh w-full max-w-160 border-x">
       <header className="bg-background/80 border-border sticky top-0 z-10 flex items-center justify-between border-b px-4 py-2 backdrop-blur">
         <div className="flex items-center gap-4">
           <Button

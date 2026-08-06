@@ -17,6 +17,7 @@ import {
 } from '@/routes/(yapper)/-components/dialog-create-reply';
 
 export const Route = createFileRoute('/(yapper)/drafts/')({
+  pendingMinMs: 0,
   beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Drafts' }) }),
   component: DraftsPage,

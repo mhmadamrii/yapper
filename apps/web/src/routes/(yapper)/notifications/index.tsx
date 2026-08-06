@@ -46,6 +46,7 @@ const TYPE_META = {
 } as const;
 
 export const Route = createFileRoute('/(yapper)/notifications/')({
+  pendingMinMs: 0,
   beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Notifications' }) }),
   component: NotificationsPage,

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 export const Route = createFileRoute('/(yapper)/settings/')({
+  pendingMinMs: 0,
   beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Settings' }) }),
   component: SettingsPage,

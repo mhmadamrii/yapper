@@ -11,6 +11,7 @@ import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { useTRPC } from '@/utils/trpc';
 
 export const Route = createFileRoute('/(yapper)/saved/')({
+  pendingMinMs: 0,
   beforeLoad: () => requireSession(),
   head: () => ({ meta: seo({ title: 'Saved' }) }),
   component: SavedPage,
