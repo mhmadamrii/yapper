@@ -4,6 +4,7 @@ import { mediaRouter } from './media';
 import { messageRouter } from './message';
 import { notificationRouter } from './notification';
 import { postRouter } from './post';
+import { recommendationRouter } from './recommendation';
 import { socialRouter } from './social';
 import { userRouter } from './user';
 
@@ -13,6 +14,7 @@ export const appRouter = router({
   message: messageRouter,
   notification: notificationRouter,
   post: postRouter,
+  recommendation: recommendationRouter,
   social: socialRouter,
   user: userRouter,
   healthCheck: publicProcedure.query(() => {
