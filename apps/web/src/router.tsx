@@ -5,7 +5,6 @@ import { Loader } from './components/loader';
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
-import { env } from '@yapper/env/web';
 import { getServerUrl } from '@/lib/server-url';
 import { toast } from '@/lib/toast';
 import { routeTree } from './routeTree.gen';
@@ -32,7 +31,11 @@ function createQueryClient() {
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${getServerUrl(env.VITE_SERVER_URL)}/trpc`,
+      // Through this app's own /api/trpc/$ proxy, not the Workers domain
+      // directly. The session cookie lives on this origin (see auth-client.ts),
+      // so a cross-domain call would arrive without it and every
+      // protectedProcedure would fail with "Authentication required".
+      url: getServerUrl('/api/trpc'),
       fetch(url, options) {
         return fetch(url, {
           ...options,
