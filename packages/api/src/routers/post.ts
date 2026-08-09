@@ -160,7 +160,7 @@ async function viewerEngagement(
 // keyset sort key — then hydrate the posts in one IN-query and restore order.
 async function pageEngagedPosts(
   db: ReturnType<typeof createDb>,
-  table: typeof like | typeof save,
+  table: typeof like | typeof repost | typeof save,
   userId: string,
   limit: number,
   cursor: { createdAt: string; id: string } | null | undefined,
@@ -733,10 +733,12 @@ export const postRouter = router({
     .input(
       z.object({
         userId: z.string().min(1),
-        tab: z.enum(['posts', 'replies', 'likes', 'saved']).default('posts'),
+        // No `saved` tab: bookmarks are private to the account and are served
+        // by the protected `post.saved` procedure instead.
+        tab: z.enum(['posts', 'replies', 'likes', 'reposts']).default('posts'),
         limit: z.number().int().min(1).max(50).default(20),
         // Keyset cursor. For posts/replies: (post.createdAt, post.id).
-        // For likes/saved: (engagement.createdAt, postId).
+        // For likes/reposts: (engagement.createdAt, postId).
         cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
       }),
     )
@@ -817,7 +819,9 @@ export const postRouter = router({
           };
         }
       } else {
-        const table = tab === 'likes' ? like : save;
+        // Both tables are keyset-paged on (userId, createdAt desc) — `repost`
+        // carries `repost_user_created_idx` for exactly this read.
+        const table = tab === 'likes' ? like : repost;
         const paged = await pageEngagedPosts(db, table, userId, limit, cursor);
         rows = paged.rows;
         nextCursor = paged.nextCursor;

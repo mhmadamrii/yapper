@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { Hash, ImageIcon } from 'lucide-react';
 import { PostCard } from '@/components/home/post-card';
+import { WhoToFollow } from '@/components/home/who-to-follow';
 import { UserAvatar } from '@/components/user-avatar';
+import {
+  interstitialSlotNumber,
+  isInterstitialSlot,
+} from '@/lib/feed-interstitials';
 import { useSession } from '@/hooks/use-session';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
@@ -129,7 +134,16 @@ function HomeComponent() {
         </Match>
         <Match when={posts.length > 0}>
           <For each={posts}>
-            {(post) => <PostCard key={post.id} post={post} />}
+            {(post, i) => (
+              <Fragment key={post.id}>
+                <PostCard post={post} />
+                {/* Suggestions are personalised, so there is nothing to show
+                    a logged-out visitor. */}
+                <Show when={!!session && isInterstitialSlot(i)}>
+                  <WhoToFollow slot={interstitialSlotNumber(i)} />
+                </Show>
+              </Fragment>
+            )}
           </For>
           <Show when={postsQuery.hasNextPage}>
             <div ref={loadMoreRef} className="min-h-10">

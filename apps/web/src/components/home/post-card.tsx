@@ -1,7 +1,7 @@
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { Show, For } from '@/components/control-flow';
 import { cn } from '@yapper/ui/lib/utils';
 import { imageKitUrl } from '@/lib/imagekit';
@@ -48,23 +48,66 @@ export function PostCard({
   post: PostListItem;
   threadLine?: boolean;
 }) {
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const navigate = useNavigate();
   const setLike = useSetLike();
   const setRepost = useSetRepost();
   const setSave = useSetSave();
-  const [quoteOpen, setQuoteOpen] = useState(false);
   const handle = post.author.username ?? 'unknown';
+
+  // The whole card is clickable, so every interactive child has to stop the
+  // click from bubbling up to `handleArticleClick`.
+  const stopPropagation = (e: MouseEvent) => {
+    e.stopPropagation();
+  };
 
   const handleArticleClick = () => {
     navigate({ to: '/post/$postId', params: { postId: post.id } });
   };
 
-  const handleProfileClick = (e: any) => {
+  const handleProfileClick = (e: MouseEvent) => {
     e.stopPropagation();
     navigate({
       to: '/profile/$userId',
       params: { userId: post.author.id },
     });
+  };
+
+  const handleQuotedPostClick = () => {
+    if (!post.quotedPost) return;
+    navigate({
+      to: '/post/$postId',
+      params: { postId: post.quotedPost.id },
+    });
+  };
+
+  const handleRepost = () => {
+    setRepost(post.id, !post.repostedByMe);
+  };
+
+  const handleQuote = () => {
+    setQuoteOpen(true);
+  };
+
+  const handleLike = (e: MouseEvent) => {
+    e.stopPropagation();
+    setLike(post.id, !post.likedByMe);
+  };
+
+  const handleSave = (e: MouseEvent) => {
+    e.stopPropagation();
+    setSave(post.id, !post.savedByMe);
+  };
+
+  const handleShare = async (e: MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/post/${post.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    } catch {
+      toast.error('Could not copy link');
+    }
   };
 
   return (
@@ -81,10 +124,7 @@ export function PostCard({
           }
         >
           <ProfileHoverCard userId={post.author.id}>
-            <button
-              onClick={(e) => handleProfileClick(e)}
-              className="h-fit shrink-0"
-            >
+            <button onClick={handleProfileClick} className="h-fit shrink-0">
               <UserAvatar
                 name={post.author.name}
                 image={post.author.image}
@@ -100,13 +140,7 @@ export function PostCard({
           <div className="flex items-baseline gap-1 text-sm">
             <ProfileHoverCard userId={post.author.id}>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate({
-                    to: '/profile/$userId',
-                    params: { userId: post.author.id },
-                  });
-                }}
+                onClick={handleProfileClick}
                 className="flex min-w-0 items-center gap-1 font-bold hover:underline"
               >
                 <span className="truncate">{post.author.name}</span>
@@ -150,12 +184,7 @@ export function PostCard({
             {(quotedPost) => (
               <QuotedPostPreview
                 post={quotedPost}
-                onClick={() =>
-                  navigate({
-                    to: '/post/$postId',
-                    params: { postId: quotedPost.id },
-                  })
-                }
+                onClick={handleQuotedPostClick}
               />
             )}
           </Show>
@@ -164,7 +193,7 @@ export function PostCard({
               post={post}
               trigger={
                 <button
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={stopPropagation}
                   className="hover:text-foreground flex items-center gap-1.5 transition-colors"
                 >
                   <MessageCircle className="size-4" />
@@ -174,7 +203,7 @@ export function PostCard({
             />
             <DropdownMenu>
               <DropdownMenuTrigger
-                onClick={(e) => e.stopPropagation()}
+                onClick={stopPropagation}
                 className={`flex items-center gap-1.5 transition-colors outline-none hover:text-green-500 ${
                   post.repostedByMe ? 'text-green-500' : ''
                 }`}
@@ -182,17 +211,12 @@ export function PostCard({
                 <Repeat2 className="size-4" />
                 {formatCount(post.repostCount)}
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <DropdownMenuItem
-                  onClick={() => setRepost(post.id, !post.repostedByMe)}
-                >
+              <DropdownMenuContent align="start" onClick={stopPropagation}>
+                <DropdownMenuItem onClick={handleRepost}>
                   <Repeat2 />
                   {post.repostedByMe ? 'Undo repost' : 'Repost'}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setQuoteOpen(true)}>
+                <DropdownMenuItem onClick={handleQuote}>
                   <Quote />
                   Quote post
                 </DropdownMenuItem>
@@ -204,13 +228,13 @@ export function PostCard({
               onOpenChange={setQuoteOpen}
             />
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setLike(post.id, !post.likedByMe);
-              }}
-              className={`flex items-center gap-1.5 transition-colors hover:text-red-500 ${
-                post.likedByMe ? 'text-red-500' : ''
-              }`}
+              onClick={handleLike}
+              className={cn(
+                'flex items-center gap-1.5 transition-colors hover:text-red-500',
+                {
+                  'text-red-500': post.likedByMe,
+                },
+              )}
             >
               <Heart
                 className="size-4"
@@ -223,10 +247,7 @@ export function PostCard({
                 className={cn('hover:text-foreground transition-colors ', {
                   'text-primary': post.savedByMe,
                 })}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSave(post.id, !post.savedByMe);
-                }}
+                onClick={handleSave}
               >
                 <Bookmark
                   className="size-4"
@@ -234,16 +255,7 @@ export function PostCard({
                 />
               </button>
               <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const url = `${window.location.origin}/post/${post.id}`;
-                  try {
-                    await navigator.clipboard.writeText(url);
-                    toast.success('Link copied to clipboard');
-                  } catch {
-                    toast.error('Could not copy link');
-                  }
-                }}
+                onClick={handleShare}
                 className="hover:text-foreground transition-colors"
               >
                 <Share className="size-4" />

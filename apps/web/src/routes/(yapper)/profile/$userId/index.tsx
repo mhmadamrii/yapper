@@ -22,7 +22,7 @@ const TABS = [
   { key: 'posts', label: 'Posts' },
   { key: 'replies', label: 'Replies' },
   { key: 'likes', label: 'Likes' },
-  { key: 'saved', label: 'Saved' },
+  { key: 'reposts', label: 'Reposts' },
 ] as const;
 
 type ProfileTab = (typeof TABS)[number]['key'];

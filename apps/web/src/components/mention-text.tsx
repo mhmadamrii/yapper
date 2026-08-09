@@ -10,7 +10,7 @@ export function MentionText({ text }: { text: string }) {
     <>
       {segments.map((segment, i) =>
         segment.type === 'mention' ? (
-          <span key={i} className="text-primary">
+          <span key={i} className="text-blue-500">
             {segment.value}
           </span>
         ) : (

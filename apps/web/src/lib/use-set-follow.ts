@@ -13,10 +13,16 @@ interface PostShape {
   author: { id: string; followedByMe?: boolean };
 }
 
+interface RecommendationShape {
+  user: { id: string };
+  followedByMe: boolean;
+}
+
 /**
  * Optimistic follow/unfollow: updates every cached `user.byId` profile
- * (flag + follower count) and `post.byId` author immediately, rolls back
- * on error, and re-syncs with the server on settle.
+ * (flag + follower count), `post.byId` author, and `recommendation.follows`
+ * card immediately, rolls back on error, and re-syncs with the server on
+ * settle.
  */
 export function useSetFollow() {
   const trpc = useTRPC();
@@ -29,6 +35,9 @@ export function useSetFollow() {
         await Promise.all([
           queryClient.cancelQueries({ queryKey: trpc.user.byId.queryKey() }),
           queryClient.cancelQueries({ queryKey: trpc.post.byId.queryKey() }),
+          queryClient.cancelQueries({
+            queryKey: trpc.recommendation.follows.queryKey(),
+          }),
         ]);
         const snapshots = [
           ...queryClient.getQueriesData({
@@ -36,6 +45,9 @@ export function useSetFollow() {
           }),
           ...queryClient.getQueriesData({
             queryKey: trpc.post.byId.queryKey(),
+          }),
+          ...queryClient.getQueriesData({
+            queryKey: trpc.recommendation.follows.queryKey(),
           }),
         ];
 
@@ -73,6 +85,21 @@ export function useSetFollow() {
               ...data,
               author: { ...data.author, followedByMe: followed },
             };
+          },
+        );
+
+        // The suggestion card flips to "Following" in place rather than
+        // vanishing — pulling the card out from under the cursor reflows the
+        // other two mid-click.
+        queryClient.setQueriesData(
+          { queryKey: trpc.recommendation.follows.queryKey() },
+          (old: unknown) => {
+            if (!Array.isArray(old)) return old;
+            const list = old as RecommendationShape[];
+            if (!list.some((rec) => rec.user.id === userId)) return old;
+            return list.map((rec) =>
+              rec.user.id === userId ? { ...rec, followedByMe: followed } : rec,
+            );
           },
         );
 

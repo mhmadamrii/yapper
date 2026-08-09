@@ -11,7 +11,7 @@ function RouteComponent() {
   return (
     <section className="w-full min-h-svh flex items-center">
       <div className="w-full sm:w-[40%] self-stretch flex-col flex items-end justify-center gap-4 border-r border px-15">
-        <h1 className="font-heading text-primary text-center text-6xl font-extrabold tracking-tight lg:text-7xl">
+        <h1 className="font-heading text-primary text-center text-6xl font-extrabold tracking-tight lg:text-6xl">
           Create account
         </h1>
         <p className="text-muted-foreground text-center text-lg font-medium">

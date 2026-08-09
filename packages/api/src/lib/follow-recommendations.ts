@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { createDb } from '@yapper/db';
 import { user } from '@yapper/db/schema/auth';
+import { userProfile } from '@yapper/db/schema/profile';
 import { follow, userStats } from '@yapper/db/schema/social';
 
 import { getViewerExclusions } from './social-filters';
@@ -23,8 +24,17 @@ export type FollowRecommendation = {
     name: string;
     username: string | null;
     displayUsername: string | null;
+    emailVerified: boolean;
     image: string | null;
+    bio: string | null;
   };
+  /**
+   * Always false as returned by the server — anyone the viewer already follows
+   * is excluded before scoring. It exists so the client can flip it optimistically
+   * in the query cache when the Follow button is pressed, the same way
+   * `post.likedByMe` works.
+   */
+  followedByMe: boolean;
   /**
    * Adamic-Adar score for `fof` results, 0 for `popular` fallback results.
    */
@@ -42,8 +52,40 @@ const userColumns = {
   name: user.name,
   username: user.username,
   displayUsername: user.displayUsername,
+  emailVerified: user.emailVerified,
   image: user.image,
+  // Side table, joined in — the card shows a one-line bio like the profile does.
+  bio: userProfile.bio,
 };
+
+type UserColumnRow = {
+  id: string;
+  name: string;
+  username: string | null;
+  displayUsername: string | null;
+  emailVerified: boolean;
+  image: string | null;
+  bio: string | null;
+};
+
+function toRecommendation(
+  row: UserColumnRow,
+  extra: Pick<FollowRecommendation, 'score' | 'mutualCount' | 'reason'>,
+): FollowRecommendation {
+  return {
+    user: {
+      id: row.id,
+      name: row.name,
+      username: row.username,
+      displayUsername: row.displayUsername,
+      emailVerified: row.emailVerified,
+      image: row.image,
+      bio: row.bio,
+    },
+    followedByMe: false,
+    ...extra,
+  };
+}
 
 /**
  * Adamic-Adar: each shared intermediary contributes 1 / ln(degree) rather than
@@ -116,14 +158,16 @@ export async function getFollowRecommendations(
     // follow.followerId here is the intermediary z: someone the viewer follows.
     .innerJoin(user, eq(user.id, follow.followeeId))
     .leftJoin(userStats, eq(userStats.userId, follow.followerId))
+    .leftJoin(userProfile, eq(userProfile.userId, follow.followeeId))
     .where(
       and(
         inArray(follow.followerId, followeeIds),
         notInArray(follow.followeeId, excludedIds),
       ),
     )
-    // Grouping by the user PK lets Postgres carry the other user columns along.
-    .groupBy(user.id)
+    // Grouping by both PKs lets Postgres carry the remaining selected columns
+    // along as functionally dependent.
+    .groupBy(user.id, userProfile.userId)
     .orderBy(desc(adamicAdarScore), desc(sql`count(*)`))
     .limit(limit);
 
@@ -132,18 +176,13 @@ export async function getFollowRecommendations(
     return popularFallback(db, excludedIds, limit);
   }
 
-  return rows.map((row) => ({
-    user: {
-      id: row.id,
-      name: row.name,
-      username: row.username,
-      displayUsername: row.displayUsername,
-      image: row.image,
-    },
-    score: Number(row.score),
-    mutualCount: Number(row.mutualCount),
-    reason: 'fof' as const,
-  }));
+  return rows.map((row) =>
+    toRecommendation(row, {
+      score: Number(row.score),
+      mutualCount: Number(row.mutualCount),
+      reason: 'fof',
+    }),
+  );
 }
 
 /**
@@ -160,20 +199,12 @@ async function popularFallback(
     .select(userColumns)
     .from(userStats)
     .innerJoin(user, eq(user.id, userStats.userId))
+    .leftJoin(userProfile, eq(userProfile.userId, userStats.userId))
     .where(notInArray(user.id, excludedIds))
     .orderBy(desc(userStats.followerCount), desc(user.id))
     .limit(limit);
 
-  return rows.map((row) => ({
-    user: {
-      id: row.id,
-      name: row.name,
-      username: row.username,
-      displayUsername: row.displayUsername,
-      image: row.image,
-    },
-    score: 0,
-    mutualCount: 0,
-    reason: 'popular' as const,
-  }));
+  return rows.map((row) =>
+    toRecommendation(row, { score: 0, mutualCount: 0, reason: 'popular' }),
+  );
 }
