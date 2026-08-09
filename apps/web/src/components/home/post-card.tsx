@@ -10,6 +10,7 @@ import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { QuotedPostPreview } from '@/components/home/quoted-post-preview';
+import { LinkPreviewCard } from '@/components/home/link-preview-card';
 import { useSetLike } from '@/lib/use-set-like';
 import { useSetRepost } from '@/lib/use-set-repost';
 import { useSetSave } from '@/lib/use-set-save';
@@ -179,6 +180,22 @@ export function PostCard({
                 )}
               </For>
             </div>
+          </Show>
+          {/* Media wins over the link card when a post has both — two large
+              embeds stacked reads as a broken layout, and the author's own
+              image is the more deliberate choice. */}
+          <Show
+            when={
+              post.media.length === 0 &&
+              post.linkPreview &&
+              // A cached entry can go stale into a failed re-unfurl; render
+              // nothing rather than a card that is just a bare domain.
+              (post.linkPreview.title || post.linkPreview.imageUrl)
+                ? post.linkPreview
+                : null
+            }
+          >
+            {(preview) => <LinkPreviewCard preview={preview} />}
           </Show>
           <Show when={post.quotedPost}>
             {(quotedPost) => (

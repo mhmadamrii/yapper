@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { user } from './auth';
+import { linkPreview } from './link-preview';
 
 import {
   pgTable,
@@ -32,6 +33,13 @@ export const post = pgTable(
       (): AnyPgColumn => post.id,
       { onDelete: 'set null' },
     ),
+    // The one link card this post renders, pointing into the shared unfurl
+    // cache. Only the URL is stored here — title/image live in `link_preview`
+    // so a re-unfurl updates every post that shares the link at once, and so
+    // a client can never dictate what a card says.
+    linkPreviewUrl: text('link_preview_url').references(() => linkPreview.url, {
+      onDelete: 'set null',
+    }),
     // Denormalized engagement counters — updated with atomic increments
     // alongside like/repost/reply writes, never recomputed via COUNT(*).
     // repostCount covers both a plain repost and a quote post, same as
@@ -104,6 +112,10 @@ export const postRelations = relations(post, ({ one, many }) => ({
   }),
   quotedBy: many(post, { relationName: 'quotes' }),
   media: many(postMedia),
+  linkPreview: one(linkPreview, {
+    fields: [post.linkPreviewUrl],
+    references: [linkPreview.url],
+  }),
 }));
 
 export const postMediaRelations = relations(postMedia, ({ one }) => ({

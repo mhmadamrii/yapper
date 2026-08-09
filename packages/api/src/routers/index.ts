@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure, router } from '../index';
 import { draftRouter } from './draft';
+import { linkRouter } from './link';
 import { mediaRouter } from './media';
 import { messageRouter } from './message';
 import { notificationRouter } from './notification';
@@ -10,6 +11,7 @@ import { userRouter } from './user';
 
 export const appRouter = router({
   draft: draftRouter,
+  link: linkRouter,
   media: mediaRouter,
   message: messageRouter,
   notification: notificationRouter,

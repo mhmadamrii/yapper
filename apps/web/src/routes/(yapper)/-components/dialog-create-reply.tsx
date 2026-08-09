@@ -7,6 +7,8 @@ import { ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
+import { LinkPreviewCard } from '@/components/home/link-preview-card';
+import { useComposerLinkPreview } from '@/hooks/use-composer-link-preview';
 import { MentionText } from '@/components/mention-text';
 import { GifPickerButton } from './gif-picker-button';
 import { MentionTextarea } from './mention-textarea';
@@ -66,6 +68,7 @@ export function DialogCreateReply({
     initialDraft?.media ?? [],
   );
   const [isPosting, setIsPosting] = useState(false);
+  const linkPreview = useComposerLinkPreview(text);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: session } = useSession();
@@ -92,6 +95,7 @@ export function DialogCreateReply({
     setText(initialDraft?.content ?? '');
     setImages([]);
     setExistingMedia(initialDraft?.media ?? []);
+    linkPreview.reset();
   };
 
   const addFiles = (files: FileList | null) => {
@@ -158,6 +162,7 @@ export function DialogCreateReply({
         content: text.trim(),
         media,
         replyToPostId: post.id,
+        linkUrl: media.length > 0 ? undefined : linkPreview.linkUrl,
       });
       if (initialDraft) {
         // Best-effort: the reply already exists at this point, so a failed
@@ -302,6 +307,14 @@ export function DialogCreateReply({
                 className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
               />
 
+              <Show when={totalImages === 0 && linkPreview.preview}>
+                {(preview) => (
+                  <LinkPreviewCard
+                    preview={preview}
+                    onDismiss={linkPreview.dismiss}
+                  />
+                )}
+              </Show>
               <Show when={totalImages > 0}>
                 <div className="grid grid-cols-2 gap-2">
                   <For each={existingMedia}>

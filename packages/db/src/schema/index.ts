@@ -1,5 +1,6 @@
 export * from './auth';
 export * from './post';
+export * from './link-preview';
 export * from './engagement';
 export * from './social';
 export * from './profile';

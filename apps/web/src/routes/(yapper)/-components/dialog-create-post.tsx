@@ -9,6 +9,8 @@ import { ChevronDown, Globe, ImageIcon, Smile, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
+import { LinkPreviewCard } from '@/components/home/link-preview-card';
+import { useComposerLinkPreview } from '@/hooks/use-composer-link-preview';
 import { GifPickerButton } from './gif-picker-button';
 import { MentionTextarea } from './mention-textarea';
 
@@ -57,6 +59,7 @@ export function DialogCreatePost({
     initialDraft?.media ?? [],
   );
   const [isPosting, setIsPosting] = useState(false);
+  const linkPreview = useComposerLinkPreview(text);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: session } = useSession();
@@ -82,6 +85,7 @@ export function DialogCreatePost({
     setText(initialDraft?.content ?? '');
     setImages([]);
     setExistingMedia(initialDraft?.media ?? []);
+    linkPreview.reset();
   };
 
   const addFiles = (files: FileList | null) => {
@@ -144,7 +148,13 @@ export function DialogCreatePost({
     setIsPosting(true);
     try {
       const media = [...existingMedia, ...(await uploadPendingImages())];
-      await createPost.mutateAsync({ content: text.trim(), media });
+      await createPost.mutateAsync({
+        content: text.trim(),
+        media,
+        // Undefined when the card was dismissed or the post carries images,
+        // so what gets stored matches what the composer showed.
+        linkUrl: media.length > 0 ? undefined : linkPreview.linkUrl,
+      });
       if (initialDraft) {
         // Best-effort: the post already exists at this point, so a failed
         // cleanup just leaves a stale draft rather than losing the post.
@@ -257,6 +267,14 @@ export function DialogCreatePost({
               className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
             />
 
+            <Show when={totalImages === 0 && linkPreview.preview}>
+              {(preview) => (
+                <LinkPreviewCard
+                  preview={preview}
+                  onDismiss={linkPreview.dismiss}
+                />
+              )}
+            </Show>
             <Show when={totalImages > 0}>
               <div className="grid grid-cols-2 gap-2">
                 <For each={existingMedia}>

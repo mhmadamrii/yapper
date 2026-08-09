@@ -5,6 +5,7 @@ import { post, postMedia } from '@yapper/db/schema/post';
 import { follow, userStats } from '@yapper/db/schema/social';
 import { z } from 'zod';
 import { getViewerExclusions } from '../lib/social-filters';
+import { getOrCreateLinkPreview, normalizeUrl } from '../lib/unfurl';
 import { notify } from '../lib/notifications';
 import { protectedProcedure, publicProcedure, router } from '../index';
 
@@ -51,6 +52,9 @@ export function buildPostInsertStatements(
     }>;
     replyToPostId?: string;
     quotedPostId?: string;
+    // Must already exist in `link_preview` — the FK is enforced, and the
+    // caller is expected to have gone through `getOrCreateLinkPreview`.
+    linkPreviewUrl?: string;
   },
 ) {
   const insertPost = db.insert(post).values({
@@ -59,6 +63,7 @@ export function buildPostInsertStatements(
     content: args.content,
     replyToPostId: args.replyToPostId,
     quotedPostId: args.quotedPostId,
+    linkPreviewUrl: args.linkPreviewUrl,
   });
 
   const extras = [];
@@ -202,6 +207,7 @@ async function pageEngagedPosts(
       : await db.query.post.findMany({
           where: inArray(post.id, ids),
           with: {
+            linkPreview: true,
             author: {
               columns: {
                 id: true,
@@ -217,6 +223,7 @@ async function pageEngagedPosts(
             },
             quotedPost: {
               with: {
+                linkPreview: true,
                 author: {
                   columns: {
                     id: true,
@@ -306,6 +313,7 @@ export const postRouter = router({
           : await db.query.post.findMany({
               where: inArray(post.id, ids),
               with: {
+                linkPreview: true,
                 author: {
                   columns: {
                     id: true,
@@ -321,6 +329,7 @@ export const postRouter = router({
                 },
                 quotedPost: {
                   with: {
+                    linkPreview: true,
                     author: {
                       columns: {
                         id: true,
@@ -406,6 +415,7 @@ export const postRouter = router({
         orderBy: [desc(post.createdAt), desc(post.id)],
         limit: input.limit + 1,
         with: {
+          linkPreview: true,
           author: {
             columns: {
               id: true,
@@ -421,6 +431,7 @@ export const postRouter = router({
           },
           quotedPost: {
             with: {
+              linkPreview: true,
               author: {
                 columns: {
                   id: true,
@@ -474,6 +485,7 @@ export const postRouter = router({
       const found = await db.query.post.findFirst({
         where: eq(post.id, input.id),
         with: {
+          linkPreview: true,
           author: {
             columns: {
               id: true,
@@ -490,6 +502,7 @@ export const postRouter = router({
           // The embedded post, when this is a quote post.
           quotedPost: {
             with: {
+              linkPreview: true,
               author: {
                 columns: {
                   id: true,
@@ -509,6 +522,7 @@ export const postRouter = router({
           // above the focused post with a thread line.
           replyTo: {
             with: {
+              linkPreview: true,
               author: {
                 columns: {
                   id: true,
@@ -524,6 +538,7 @@ export const postRouter = router({
               },
               quotedPost: {
                 with: {
+                  linkPreview: true,
                   author: {
                     columns: {
                       id: true,
@@ -549,6 +564,7 @@ export const postRouter = router({
                   ? [asc(reply.createdAt), asc(reply.id)]
                   : [desc(reply.createdAt), desc(reply.id)],
             with: {
+              linkPreview: true,
               author: {
                 columns: {
                   id: true,
@@ -564,6 +580,7 @@ export const postRouter = router({
               },
               quotedPost: {
                 with: {
+                  linkPreview: true,
                   author: {
                     columns: {
                       id: true,
@@ -649,6 +666,10 @@ export const postRouter = router({
         media: z.array(mediaInput).max(4).default([]),
         replyToPostId: z.string().min(1).optional(),
         quotedPostId: z.string().min(1).optional(),
+        // Only the URL — never the card's title/description/image. Those are
+        // re-derived server-side so a client can't publish a card that
+        // misrepresents where the link goes.
+        linkUrl: z.string().max(2048).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -698,6 +719,18 @@ export const postRouter = router({
         quotedAuthorId = quoted.authorId;
       }
 
+      // Normally a cache hit — the composer already unfurled this URL to draw
+      // its own preview. A card that fails to unfurl is simply dropped rather
+      // than failing the post.
+      let linkPreviewUrl: string | undefined;
+      if (input.linkUrl) {
+        const normalized = normalizeUrl(input.linkUrl);
+        if (normalized) {
+          const preview = await getOrCreateLinkPreview(db, normalized);
+          if (preview.status === 'ok') linkPreviewUrl = preview.url;
+        }
+      }
+
       await db.batch(
         buildPostInsertStatements(db, {
           postId,
@@ -706,6 +739,7 @@ export const postRouter = router({
           media: input.media,
           replyToPostId: input.replyToPostId,
           quotedPostId: input.quotedPostId,
+          linkPreviewUrl,
         }),
       );
 
@@ -774,6 +808,7 @@ export const postRouter = router({
           orderBy: [desc(post.createdAt), desc(post.id)],
           limit: limit + 1,
           with: {
+            linkPreview: true,
             author: {
               columns: {
                 id: true,
@@ -789,6 +824,7 @@ export const postRouter = router({
             },
             quotedPost: {
               with: {
+                linkPreview: true,
                 author: {
                   columns: {
                     id: true,

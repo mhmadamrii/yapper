@@ -3,6 +3,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { MentionText } from '@/components/mention-text';
+import { LinkPreviewCard } from '@/components/home/link-preview-card';
 import { PostCard } from '@/components/home/post-card';
 import { PostCardMenu } from '@/components/home/post-card-menu';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
@@ -271,6 +272,19 @@ function PostDetail({ post }: { post: PostById }) {
             )}
           </For>
         </div>
+      </Show>
+
+      {/* Same rule as the feed card: media wins when a post has both. */}
+      <Show
+        when={
+          post.media.length === 0 &&
+          post.linkPreview &&
+          (post.linkPreview.title || post.linkPreview.imageUrl)
+            ? post.linkPreview
+            : null
+        }
+      >
+        {(preview) => <LinkPreviewCard preview={preview} />}
       </Show>
 
       <p className="text-muted-foreground border-border mt-3 border-b pb-3 text-sm">
