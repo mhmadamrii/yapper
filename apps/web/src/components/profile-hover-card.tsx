@@ -6,7 +6,7 @@ import { Skeleton } from '@yapper/ui/components/skeleton';
 import { Match, Show, Switch } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { formatCount } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
@@ -35,7 +35,7 @@ export function ProfileHoverCard({
   const trpc = useTRPC();
 
   const [open, setOpen] = useState(false);
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 
   const userQuery = useQuery(
     trpc.user.byId.queryOptions({ id: userId }, { enabled: open }),

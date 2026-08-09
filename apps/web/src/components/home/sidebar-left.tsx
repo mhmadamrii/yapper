@@ -3,7 +3,7 @@ import { LINK_CLASSNAME } from '@/lib/constants';
 import { Link, useNavigate, useLocation } from '@tanstack/react-router';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 import { DialogSignIn } from '@/routes/(yapper)/-components/dialog-sign-in';
-import { authClient } from '@/lib/auth-client';
+import { useSession, useSignOut } from '@/hooks/use-session';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
@@ -61,7 +61,7 @@ export const navItemsAfterProfile = [
 ] as const;
 
 export function SidebarLeft() {
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session, isPending } = useSession();
   const location = useLocation();
   const collapsed = location.pathname.startsWith('/messages');
 
@@ -96,6 +96,7 @@ function AccountChip({
   collapsed?: boolean;
 }) {
   const navigate = useNavigate();
+  const signOut = useSignOut();
 
   return (
     <DropdownMenu>
@@ -144,15 +145,7 @@ function AccountChip({
           <Plus />
           Add another account
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            authClient.signOut({
-              fetchOptions: {
-                onSuccess: () => navigate({ to: '/' }),
-              },
-            })
-          }
-        >
+        <DropdownMenuItem onClick={() => signOut()}>
           <LogOut />
           Sign out
         </DropdownMenuItem>

@@ -1,10 +1,10 @@
 import { Input } from '@yapper/ui/components/input';
 import { Compass, ListFilter, Plus, Search, TrendingUp } from 'lucide-react';
 import { trendingTopics } from './dummy-posts';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 
 export function SidebarRight() {
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 
   return (
     <aside className="sticky top-0 hidden h-svh w-80 flex-col gap-5 px-6 py-6 lg:flex">

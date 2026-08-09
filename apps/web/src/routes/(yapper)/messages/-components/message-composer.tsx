@@ -4,7 +4,7 @@ import { toast } from '@/lib/toast';
 import { Button } from '@yapper/ui/components/button';
 import { Textarea } from '@yapper/ui/components/textarea';
 import { SendHorizontal } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { useTRPC } from '@/utils/trpc';
 
 import type { AppRouter } from '@yapper/api/routers/index';
@@ -31,7 +31,7 @@ export function MessageComposer({
   const queryClient = useQueryClient();
 
   const [text, setText] = useState('');
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 
   const send = useMutation(
     trpc.message.send.mutationOptions({

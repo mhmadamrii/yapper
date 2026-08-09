@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { useTRPC } from '@/utils/trpc';
 
 interface RepostShape {
@@ -30,7 +30,7 @@ function applyRepost<T extends RepostShape>(
 export function useSetRepost() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 
   const mutation = useMutation(
     trpc.post.setRepost.mutationOptions({

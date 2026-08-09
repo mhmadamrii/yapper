@@ -1,4 +1,4 @@
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { cn } from '@yapper/ui/lib/utils';
 import { imageKitUrl, uploadToImageKit } from '@/lib/imagekit';
 import { UserAvatar } from '@/components/user-avatar';
@@ -59,7 +59,7 @@ export function DialogCreatePost({
   const [isPosting, setIsPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 

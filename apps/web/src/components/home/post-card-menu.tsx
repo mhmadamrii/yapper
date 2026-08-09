@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from '@/lib/toast';
 
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { useDeletePost } from '@/lib/use-delete-post';
 import { Show } from '@/components/control-flow';
 
@@ -55,7 +55,7 @@ import { Button } from '@yapper/ui/components/button';
  * (timeline, profile, thread).
  */
 export function PostCardMenu({ post }: { post: MenuPost }) {
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const deletePost = useDeletePost();
   const isOwnPost = session?.user.id === post.author.id;
 

@@ -7,7 +7,7 @@ import { Empty, EmptyMedia, EmptyTitle } from '@yapper/ui/components/empty';
 import { Skeleton } from '@yapper/ui/components/skeleton';
 import { For, Show, Switch, Match } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { timeAgo } from '@/lib/utils';
 import { useTRPC } from '@/utils/trpc';
 import { DialogNewChat } from './dialog-new-chat';
@@ -19,7 +19,7 @@ type ConversationItem = inferRouterOutputs<AppRouter>['message']['list']['items'
 
 export function ConversationListPane() {
   const trpc = useTRPC();
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const { conversationId: activeId } = useParams({ strict: false });
 
   const listQuery = useInfiniteQuery(

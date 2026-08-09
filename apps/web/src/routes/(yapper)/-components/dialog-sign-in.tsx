@@ -2,6 +2,7 @@ import z from 'zod';
 
 import { useForm } from '@tanstack/react-form';
 import { authClient } from '@/lib/auth-client';
+import { useRefreshSession } from '@/hooks/use-session';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { Label } from '@yapper/ui/components/label';
@@ -29,6 +30,7 @@ export function DialogSignIn() {
   const navigate = useNavigate({
     from: '/',
   });
+  const refreshSession = useRefreshSession();
 
   const form = useForm({
     defaultValues: {
@@ -42,8 +44,12 @@ export function DialogSignIn() {
           password: value.password,
         },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
             setOpen(false);
+            // The session query still holds the logged-out result at this
+            // point; refresh it before navigating so guards and the nav
+            // chrome see the new session.
+            await refreshSession();
             navigate({
               to: '/',
             });

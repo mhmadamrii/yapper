@@ -1,9 +1,9 @@
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { LINK_CLASSNAME } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
 import { Bell, Home, LogOut, Menu, MessageCircle, Search } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { useSession, useSignOut } from '@/hooks/use-session';
 import { useTRPC } from '@/utils/trpc';
 import { UserAvatar } from '@/components/user-avatar';
 import { Show, For } from '@/components/control-flow';
@@ -30,7 +30,7 @@ const bottomTabs = [
 ] as const;
 
 export function MobileNav() {
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
 
   const trpc = useTRPC();
@@ -118,7 +118,7 @@ export function MobileNav() {
 }
 
 function DrawerNavContent({ user }: { user: AccountUser }) {
-  const navigate = useNavigate();
+  const signOut = useSignOut();
 
   return (
     <div className="flex flex-col gap-1">
@@ -188,14 +188,7 @@ function DrawerNavContent({ user }: { user: AccountUser }) {
           </DrawerClose>
         )}
       </For>
-      <button
-        className={LINK_CLASSNAME}
-        onClick={() =>
-          authClient.signOut({
-            fetchOptions: { onSuccess: () => navigate({ to: '/' }) },
-          })
-        }
-      >
+      <button className={LINK_CLASSNAME} onClick={() => signOut()}>
         <LogOut className="size-6" />
         Sign out
       </button>

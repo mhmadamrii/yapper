@@ -1,6 +1,6 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { Skeleton } from '@yapper/ui/components/skeleton';
-import { authClient } from '@/lib/auth-client';
+import { useSession, useSignOut } from '@/hooks/use-session';
 import { Button } from '@yapper/ui/components/button';
 
 import {
@@ -14,8 +14,8 @@ import {
 } from '@yapper/ui/components/dropdown-menu';
 
 export default function UserMenu() {
-  const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const signOut = useSignOut();
+  const { data: session, isPending } = useSession();
 
   if (isPending) {
     return <Skeleton className="h-9 w-24" />;
@@ -42,15 +42,7 @@ export default function UserMenu() {
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    navigate({
-                      to: '/',
-                    });
-                  },
-                },
-              });
+              signOut();
             }}
           >
             Sign Out

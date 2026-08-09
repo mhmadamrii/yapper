@@ -4,7 +4,7 @@ import { Button } from '@yapper/ui/components/button';
 import { ArrowLeft, Bookmark } from 'lucide-react';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/(yapper)/saved/')({
 function SavedPage() {
   const router = useRouter();
   const trpc = useTRPC();
-  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = useSession();
 
   const postsQuery = useInfiniteQuery(
     trpc.post.saved.infiniteQueryOptions(

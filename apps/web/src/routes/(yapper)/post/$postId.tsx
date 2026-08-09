@@ -8,7 +8,7 @@ import { PostCardMenu } from '@/components/home/post-card-menu';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { imageKitUrl } from '@/lib/imagekit';
 import { seo } from '@/lib/seo';
 import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
@@ -167,7 +167,7 @@ function PostDetailPage() {
 // Bluesky-style reply row: looks like an inline composer, but opens the
 // reply dialog. Hidden when signed out, same as the old inline composer.
 function ReplyDialogRow({ post }: { post: PostById }) {
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 
   return (
     <Show when={session}>
@@ -192,7 +192,7 @@ function ReplyDialogRow({ post }: { post: PostById }) {
 
 function PostDetail({ post }: { post: PostById }) {
   const navigate = useNavigate();
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const setLike = useSetLike();
   const setSave = useSetSave();
   const setFollow = useSetFollow();

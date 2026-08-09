@@ -5,7 +5,7 @@ import { useInView } from 'react-intersection-observer';
 import { Hash, ImageIcon } from 'lucide-react';
 import { PostCard } from '@/components/home/post-card';
 import { UserAvatar } from '@/components/user-avatar';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
@@ -21,7 +21,7 @@ export const Route = createFileRoute('/(yapper)/')({
 function HomeComponent() {
   const trpc = useTRPC();
 
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const { ref: loadMoreRef, inView } = useInView();
 
   const tabs = session ? ['Discover', 'Following'] : ['Discover', 'Feeds ✨'];

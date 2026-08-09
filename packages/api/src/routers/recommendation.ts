@@ -1,11 +1,11 @@
 import { createDb } from '@yapper/db';
+import { protectedProcedure, router } from '../index';
 import { z } from 'zod';
 
 import {
   DEFAULT_RECOMMENDATION_LIMIT,
   getFollowRecommendations,
 } from '../lib/follow-recommendations';
-import { protectedProcedure, router } from '../index';
 
 export const recommendationRouter = router({
   // "People you might know". tRPC query == GET; the client calls this as

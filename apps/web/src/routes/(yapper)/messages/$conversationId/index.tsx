@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { seo } from '@/lib/seo';
 import { useConversationStream } from '@/lib/use-conversation-stream';
 import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/(yapper)/messages/$conversationId/')({
 function ConversationPage() {
   const { conversationId } = Route.useParams();
   const trpc = useTRPC();
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   useConversationStream(conversationId);
 
   // Cheap way to get this conversation's display header: pull it out of the

@@ -1,4 +1,4 @@
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { imageKitUrl, uploadToImageKit } from '@/lib/imagekit';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -68,7 +68,7 @@ export function DialogCreateReply({
   const [isPosting, setIsPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 

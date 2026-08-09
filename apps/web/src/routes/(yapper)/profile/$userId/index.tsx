@@ -8,7 +8,7 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { imageKitUrl } from '@/lib/imagekit';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { DialogEditProfile } from '@/routes/(yapper)/-components/dialog-edit-profile';
@@ -36,7 +36,7 @@ function ProfilePage() {
   const { userId } = Route.useParams();
   const router = useRouter();
   const trpc = useTRPC();
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const setFollow = useSetFollow();
 
   const [tab, setTab] = useState<ProfileTab>('posts');

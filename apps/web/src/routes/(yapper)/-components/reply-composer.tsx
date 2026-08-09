@@ -4,7 +4,7 @@ import { Button } from '@yapper/ui/components/button';
 import { toast } from '@/lib/toast';
 import { Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { useTRPC } from '@/utils/trpc';
 
 const MAX_POST_LENGTH = 300;
@@ -13,7 +13,7 @@ export function ReplyComposer({ postId }: { postId: string }) {
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
 
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 

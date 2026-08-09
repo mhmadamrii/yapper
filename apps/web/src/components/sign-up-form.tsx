@@ -3,6 +3,7 @@ import z from 'zod';
 import { Loader } from './loader';
 import { Label } from '@yapper/ui/components/label';
 import { authClient } from '@/lib/auth-client';
+import { useRefreshSession, useSession } from '@/hooks/use-session';
 import { AtSignIcon, LockIcon, MailIcon, UserIcon } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useForm } from '@tanstack/react-form';
@@ -35,8 +36,9 @@ export function SignUpForm() {
   const navigate = useNavigate({
     from: '/',
   });
+  const refreshSession = useRefreshSession();
 
-  const { isPending } = authClient.useSession();
+  const { isPending } = useSession();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const form = useForm({
@@ -56,7 +58,8 @@ export function SignUpForm() {
           username: value.username + USERNAME_SUFFIX,
         },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
+            await refreshSession();
             navigate({
               to: '/',
             });

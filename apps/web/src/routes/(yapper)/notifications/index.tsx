@@ -6,7 +6,7 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { MentionText } from '@/components/mention-text';
 import { UserAvatar } from '@/components/user-avatar';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
@@ -62,7 +62,7 @@ function NotificationsPage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(0);
-  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = useSession();
 
   const notificationsQuery = useInfiniteQuery(
     trpc.notification.list.infiniteQueryOptions(

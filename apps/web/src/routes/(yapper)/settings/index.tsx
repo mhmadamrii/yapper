@@ -1,7 +1,7 @@
 import { Button } from '@yapper/ui/components/button';
 import { For, Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
-import { authClient } from '@/lib/auth-client';
+import { useSession, useSignOut } from '@/hooks/use-session';
 import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 
@@ -52,7 +52,8 @@ const SETTINGS_ROWS = [
 function SettingsPage() {
   const router = useRouter();
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const signOut = useSignOut();
+  const { data: session, isPending } = useSession();
 
   return (
     <main className="border-border min-h-svh w-full max-w-[640px] border-x">
@@ -109,13 +110,7 @@ function SettingsPage() {
               </For>
             </div>
             <button
-              onClick={() =>
-                authClient.signOut({
-                  fetchOptions: {
-                    onSuccess: () => navigate({ to: '/' }),
-                  },
-                })
-              }
+              onClick={() => signOut()}
               className="text-destructive hover:bg-accent/50 w-full px-4 py-4 text-left font-medium transition-colors"
             >
               Sign out

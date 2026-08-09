@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-import { authClient } from '@/lib/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { useTRPC } from '@/utils/trpc';
 
 interface ProfileShape {
@@ -21,7 +21,7 @@ interface PostShape {
 export function useSetFollow() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 
   const mutation = useMutation(
     trpc.user.setFollow.mutationOptions({

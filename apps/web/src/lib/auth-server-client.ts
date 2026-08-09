@@ -1,3 +1,4 @@
+import { usernameClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import { env } from '@yapper/env/web';
 import { getServerUrl } from './server-url';
@@ -13,4 +14,7 @@ import { getServerUrl } from './server-url';
  */
 export const authServerClient = createAuthClient({
   baseURL: `${getServerUrl(env.VITE_SERVER_URL)}/api/auth`,
+  // Mirrors auth-client.ts so the session this client returns carries the
+  // same `username` / `displayUsername` fields the UI reads.
+  plugins: [usernameClient()],
 });
