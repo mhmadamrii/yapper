@@ -4,7 +4,7 @@ import { ConversationListPane } from './-components/conversation-list-pane';
 
 export const Route = createFileRoute('/(yapper)/messages')({
   pendingMinMs: 0,
-  beforeLoad: () => requireSession(),
+  beforeLoad: ({ context }) => requireSession(context),
   component: RouteComponent,
 });
 

@@ -30,7 +30,7 @@ import {
 
 export const Route = createFileRoute('/(yapper)/settings/')({
   pendingMinMs: 0,
-  beforeLoad: () => requireSession(),
+  beforeLoad: ({ context }) => requireSession(context),
   head: () => ({ meta: seo({ title: 'Settings' }) }),
   component: SettingsPage,
 });

@@ -18,7 +18,7 @@ import {
 
 export const Route = createFileRoute('/(yapper)/drafts/')({
   pendingMinMs: 0,
-  beforeLoad: () => requireSession(),
+  beforeLoad: ({ context }) => requireSession(context),
   head: () => ({ meta: seo({ title: 'Drafts' }) }),
   component: DraftsPage,
 });

@@ -47,7 +47,7 @@ const TYPE_META = {
 
 export const Route = createFileRoute('/(yapper)/notifications/')({
   pendingMinMs: 0,
-  beforeLoad: () => requireSession(),
+  beforeLoad: ({ context }) => requireSession(context),
   head: () => ({ meta: seo({ title: 'Notifications' }) }),
   component: NotificationsPage,
   pendingComponent: () => (

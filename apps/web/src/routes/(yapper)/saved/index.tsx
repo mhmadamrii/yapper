@@ -12,7 +12,7 @@ import { useTRPC } from '@/utils/trpc';
 
 export const Route = createFileRoute('/(yapper)/saved/')({
   pendingMinMs: 0,
-  beforeLoad: () => requireSession(),
+  beforeLoad: ({ context }) => requireSession(context),
   head: () => ({ meta: seo({ title: 'Saved' }) }),
   component: SavedPage,
 });

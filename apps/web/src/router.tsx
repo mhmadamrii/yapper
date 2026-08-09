@@ -53,6 +53,8 @@ export const getRouter = () => {
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,
+    // Run beforeLoad/loader on hover so the work is already done by click time.
+    defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     context: { trpc, queryClient },
     defaultPendingComponent: () => <Loader />,

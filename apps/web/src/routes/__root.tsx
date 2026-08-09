@@ -8,6 +8,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Toaster } from '@yapper/ui/components/sonner';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { seo } from '@/lib/seo';
+import { sessionQueryOptions } from '@/lib/session-query';
 
 import {
   HeadContent,
@@ -45,6 +46,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
     ],
   }),
+
+  // Resolved once per document load (server-side during SSR, then dehydrated
+  // into the client cache) so that guarded routes in `lib/route-guards.ts`
+  // never have to block a client navigation on a session round trip.
+  loader: ({ context }) =>
+    context.queryClient.prefetchQuery(sessionQueryOptions),
 
   component: RootDocument,
 });
