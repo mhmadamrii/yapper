@@ -90,8 +90,8 @@ export function ProfileHoverCard({
                 </div>
 
                 <button onClick={goToProfile} className="mt-2 block text-left">
-                  <p className="flex items-center gap-1 text-base font-bold hover:underline">
-                    <span className="truncate">{user.name}</span>
+                  <p className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 text-base font-bold hover:underline">
+                    <span className="min-w-0 truncate">{user.name}</span>
                     {user.emailVerified && <VerifiedBadge />}
                   </p>
                   <p className="text-muted-foreground">

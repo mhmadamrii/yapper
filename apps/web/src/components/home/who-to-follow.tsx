@@ -113,11 +113,11 @@ function SuggestionCard({
         <Link
           to="/profile/$userId"
           params={{ userId: user.id }}
-          className="flex flex-col items-center gap-2"
+          className="flex w-full flex-col items-center gap-2"
         >
           <UserAvatar name={user.name} image={user.image} className="size-14" />
-          <span className="flex max-w-full items-center gap-1 font-semibold hover:underline">
-            <span className="truncate">{user.name}</span>
+          <span className="flex w-full min-w-0 items-center justify-center gap-1 font-semibold hover:underline">
+            <span className="min-w-0 truncate">{user.name}</span>
             <Show when={user.emailVerified}>
               <VerifiedBadge className="size-3.5 shrink-0" />
             </Show>

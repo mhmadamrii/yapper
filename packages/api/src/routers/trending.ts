@@ -3,9 +3,9 @@ import { createDb } from '@yapper/db';
 import { hashtagMention } from '@yapper/db/schema/trending';
 import { and, desc, eq, lt, notInArray, or } from 'drizzle-orm';
 import { z } from 'zod';
-import { publicProcedure, router } from '../index';
+import { protectedProcedure, publicProcedure, router } from '../index';
 import { normalizeHashtag } from '../lib/hashtags';
-import { getTrending } from '../lib/trending';
+import { computeTrending, getTrending } from '../lib/trending';
 import { getViewerExclusions } from '../lib/social-filters';
 import { hydratePosts } from './post';
 
@@ -112,4 +112,12 @@ export const trendingRouter = router({
 
       return { items, nextCursor };
     }),
+
+  /**
+   * Manual recompute trigger. The real trigger is the Worker's `scheduled`
+   * handler on a 5-min Cloudflare Cron (see `apps/server/src/index.ts`),
+   * which never fires in local dev — this lets the snapshot be rebuilt
+   * on demand instead of waiting for a deploy.
+   */
+  recompute: protectedProcedure.mutation(() => computeTrending()),
 });

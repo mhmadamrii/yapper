@@ -22,7 +22,7 @@ import { asc, lt, sql } from 'drizzle-orm';
 // Noise floor. Below this many distinct authors in the last hour, a "spike"
 // is two friends and a typo. LOWER THIS TO 1 for early demos — with little
 // live traffic nothing clears 3 and the list renders empty.
-const MIN_RECENT_AUTHORS = 3;
+const MIN_RECENT_AUTHORS = 2;
 
 // Rows kept in the snapshot table. Read path serves the top 5; the extra
 // headroom means you can widen the UI without touching the cron.
@@ -58,6 +58,7 @@ type ScoredRow = {
  * loop, count per tag) would be N+1 round-trips over HTTP from a Worker.
  */
 export async function computeTrending(db = createDb()) {
+  console.log('compute trending runs', new Date());
   // `filter (where ...)` splits the two windows in a single pass over the
   // 24h slice of the index, so the scan happens once, not twice.
   //
