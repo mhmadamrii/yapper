@@ -64,6 +64,13 @@
       "when": 1786258278218,
       "tag": "0008_empty_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786593012192,
+      "tag": "0009_faithful_eternals",
+      "breakpoints": true
     }
   ]
 }

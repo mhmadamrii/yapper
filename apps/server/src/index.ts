@@ -1,5 +1,6 @@
 import { trpcServer } from '@hono/trpc-server';
 import { createContext } from '@yapper/api/context';
+import { computeTrending } from '@yapper/api/lib/trending';
 import { appRouter } from '@yapper/api/routers/index';
 import { createAuth } from '@yapper/auth';
 import { createDb } from '@yapper/db';
@@ -77,4 +78,25 @@ app.get('/conversations/:id/stream', async (c) => {
   return namespace.get(id).fetch(c.req.raw);
 });
 
-export default app;
+// Hono's `app` is exported as the `fetch` handler rather than as the default
+// export directly, so the Worker can also carry a `scheduled` handler. The
+// cron trigger itself lives in `packages/infra/alchemy.run.ts` (`crons`) —
+// this side only reacts to it.
+export default {
+  fetch: app.fetch,
+  scheduled: (
+    _controller: ScheduledController,
+    _env: unknown,
+    ctx: ExecutionContext,
+  ) => {
+    // waitUntil keeps the Worker alive past the handler's synchronous return
+    // — without it the compute would be cancelled mid-query.
+    ctx.waitUntil(
+      computeTrending().catch((error) => {
+        // A failed tick is survivable: the previous snapshot stays served
+        // until the next run in 5 minutes.
+        console.error('[cron] trending compute failed', error);
+      }),
+    );
+  },
+};

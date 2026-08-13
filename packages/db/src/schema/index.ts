@@ -7,3 +7,4 @@ export * from './profile';
 export * from './notification';
 export * from './draft';
 export * from './message';
+export * from './trending';

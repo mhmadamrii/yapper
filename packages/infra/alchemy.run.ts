@@ -14,6 +14,10 @@ export const server = await Worker('server', {
   entrypoint: 'src/index.ts',
   compatibility: 'node',
   url: true,
+  // Cloudflare Cron Trigger -> the Worker's `scheduled` handler. Every 5 min
+  // recomputes the trending snapshot. (Equivalent wrangler.toml form:
+  // `[triggers] crons = ["*/5 * * * *"]`.)
+  crons: ['*/5 * * * *'],
   bindings: {
     DATABASE_URL: alchemy.secret.env.DATABASE_URL!,
     CORS_ORIGIN: alchemy.env.CORS_ORIGIN!,

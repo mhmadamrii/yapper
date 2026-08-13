@@ -7,6 +7,7 @@ import { notificationRouter } from './notification';
 import { postRouter } from './post';
 import { recommendationRouter } from './recommendation';
 import { socialRouter } from './social';
+import { trendingRouter } from './trending';
 import { userRouter } from './user';
 
 export const appRouter = router({
@@ -18,6 +19,7 @@ export const appRouter = router({
   post: postRouter,
   recommendation: recommendationRouter,
   social: socialRouter,
+  trending: trendingRouter,
   user: userRouter,
   healthCheck: publicProcedure.query(() => {
     return 'OK';

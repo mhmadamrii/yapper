@@ -3,7 +3,9 @@ import { createDb } from '@yapper/db';
 import { like, repost, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
 import { follow, userStats } from '@yapper/db/schema/social';
+import { hashtagMention } from '@yapper/db/schema/trending';
 import { z } from 'zod';
+import { extractHashtags } from '../lib/hashtags';
 import { getViewerExclusions } from '../lib/social-filters';
 import { getOrCreateLinkPreview, normalizeUrl } from '../lib/unfurl';
 import { notify } from '../lib/notifications';
@@ -11,6 +13,7 @@ import { protectedProcedure, publicProcedure, router } from '../index';
 
 import {
   and,
+  asc,
   desc,
   eq,
   inArray,
@@ -102,6 +105,22 @@ export function buildPostInsertStatements(
         .where(eq(post.id, args.quotedPostId)),
     );
   }
+  // Hashtags are materialized into their own table at write time so the
+  // trending cron never parses post bodies. Deduped within the post, so one
+  // author can't count twice for a tag from a single post.
+  const hashtags = extractHashtags(args.content);
+  if (hashtags.length > 0) {
+    extras.push(
+      db.insert(hashtagMention).values(
+        hashtags.map((hashtag) => ({
+          hashtag,
+          postId: args.postId,
+          authorId: args.authorId,
+        })),
+      ),
+    );
+  }
+
   // Denormalized per-user post count; stats row created lazily.
   extras.push(
     db
@@ -161,6 +180,78 @@ async function viewerEngagement(
   };
 }
 
+// The author fields a post card renders. Never `columns: true` — that would
+// ship email, role, and every other user column to the client.
+const postAuthorColumns = {
+  id: true,
+  name: true,
+  username: true,
+  displayUsername: true,
+  emailVerified: true,
+  image: true,
+};
+
+// The one definition of "a post, hydrated for rendering". Every feed shares
+// it, so a new relation on the post card (link previews, media alt text, the
+// next thing) is added once instead of in six places that quietly drift.
+const postWith = {
+  linkPreview: true as const,
+  author: { columns: postAuthorColumns },
+  media: { orderBy: [asc(postMedia.position)] },
+  // One level deep only: a quote of a quote renders as a plain embed, so
+  // there's nothing to recurse into.
+  quotedPost: {
+    with: {
+      linkPreview: true as const,
+      author: { columns: postAuthorColumns },
+      media: { orderBy: [asc(postMedia.position)] },
+    },
+  },
+};
+
+// Attach the viewer's per-post flags. Split out from the fetch because feeds
+// arrive at their rows by different routes (ranked, keyset, engagement-paged)
+// but all finish the same way.
+function stampEngagement<T extends { id: string }>(
+  rows: T[],
+  engagement: Awaited<ReturnType<typeof viewerEngagement>>,
+) {
+  return rows.map((row) => ({
+    ...row,
+    likedByMe: engagement.liked.has(row.id),
+    savedByMe: engagement.saved.has(row.id),
+    repostedByMe: engagement.reposted.has(row.id),
+  }));
+}
+
+// Phase 2 of every two-phase feed: given ids already in display order, load
+// relations in one IN-query, restore that order (IN doesn't preserve it), and
+// stamp the viewer's like/save/repost flags.
+export async function hydratePosts(
+  db: ReturnType<typeof createDb>,
+  ids: string[],
+  viewerId: string | undefined,
+) {
+  if (ids.length === 0) return [];
+
+  const rows = await db.query.post.findMany({
+    where: inArray(post.id, ids),
+    with: postWith,
+  });
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const ordered = ids
+    .map((id) => byId.get(id))
+    .filter((row): row is NonNullable<typeof row> => row != null);
+
+  const engagement = await viewerEngagement(
+    db,
+    viewerId,
+    ordered.map((row) => row.id),
+  );
+  return stampEngagement(ordered, engagement);
+}
+
 // Page over a user's engagement rows (like/save) — their createdAt is the
 // keyset sort key — then hydrate the posts in one IN-query and restore order.
 async function pageEngagedPosts(
@@ -206,40 +297,7 @@ async function pageEngagedPosts(
       ? []
       : await db.query.post.findMany({
           where: inArray(post.id, ids),
-          with: {
-            linkPreview: true,
-            author: {
-              columns: {
-                id: true,
-                name: true,
-                username: true,
-                displayUsername: true,
-                emailVerified: true,
-                image: true,
-              },
-            },
-            media: {
-              orderBy: (media, { asc }) => [asc(media.position)],
-            },
-            quotedPost: {
-              with: {
-                linkPreview: true,
-                author: {
-                  columns: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    displayUsername: true,
-                    emailVerified: true,
-                    image: true,
-                  },
-                },
-                media: {
-                  orderBy: (media, { asc }) => [asc(media.position)],
-                },
-              },
-            },
-          },
+          with: postWith,
         });
   const byId = new Map(posts.map((row) => [row.id, row]));
   const rows = ids
@@ -306,63 +364,11 @@ export const postRouter = router({
 
       // Phase 2: hydrate relations, then restore rank order (IN-queries
       // don't preserve input order).
-      const ids = rankedRows.map((row) => row.id);
-      const posts =
-        ids.length === 0
-          ? []
-          : await db.query.post.findMany({
-              where: inArray(post.id, ids),
-              with: {
-                linkPreview: true,
-                author: {
-                  columns: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    displayUsername: true,
-                    emailVerified: true,
-                    image: true,
-                  },
-                },
-                media: {
-                  orderBy: (media, { asc }) => [asc(media.position)],
-                },
-                quotedPost: {
-                  with: {
-                    linkPreview: true,
-                    author: {
-                      columns: {
-                        id: true,
-                        name: true,
-                        username: true,
-                        displayUsername: true,
-                        emailVerified: true,
-                        image: true,
-                      },
-                    },
-                    media: {
-                      orderBy: (media, { asc }) => [asc(media.position)],
-                    },
-                  },
-                },
-              },
-            });
-      const byId = new Map(posts.map((row) => [row.id, row]));
-      const rows = ids
-        .map((id) => byId.get(id))
-        .filter((row): row is NonNullable<typeof row> => row != null);
-
-      const engagement = await viewerEngagement(
+      const items = await hydratePosts(
         db,
+        rankedRows.map((row) => row.id),
         ctx.session?.user.id,
-        rows.map((row) => row.id),
       );
-      const items = rows.map((row) => ({
-        ...row,
-        likedByMe: engagement.liked.has(row.id),
-        savedByMe: engagement.saved.has(row.id),
-        repostedByMe: engagement.reposted.has(row.id),
-      }));
 
       return { items, nextCursor };
     }),
@@ -414,40 +420,11 @@ export const postRouter = router({
         ),
         orderBy: [desc(post.createdAt), desc(post.id)],
         limit: input.limit + 1,
-        with: {
-          linkPreview: true,
-          author: {
-            columns: {
-              id: true,
-              name: true,
-              username: true,
-              displayUsername: true,
-              emailVerified: true,
-              image: true,
-            },
-          },
-          media: {
-            orderBy: (media, { asc }) => [asc(media.position)],
-          },
-          quotedPost: {
-            with: {
-              linkPreview: true,
-              author: {
-                columns: {
-                  id: true,
-                  name: true,
-                  username: true,
-                  displayUsername: true,
-                  emailVerified: true,
-                  image: true,
-                },
-              },
-              media: {
-                orderBy: (media, { asc }) => [asc(media.position)],
-              },
-            },
-          },
-        },
+        // Single-phase on purpose: the keyset predicate and the relations can
+        // ride in one query here, so this doesn't go through hydratePosts —
+        // that would cost an extra HTTP round-trip from the Worker for
+        // nothing.
+        with: postWith,
       });
 
       let nextCursor: { createdAt: string; id: string } | null = null;
@@ -462,14 +439,8 @@ export const postRouter = router({
         viewerId,
         rows.map((row) => row.id),
       );
-      const items = rows.map((row) => ({
-        ...row,
-        likedByMe: engagement.liked.has(row.id),
-        savedByMe: engagement.saved.has(row.id),
-        repostedByMe: engagement.reposted.has(row.id),
-      }));
 
-      return { items, nextCursor };
+      return { items: stampEngagement(rows, engagement), nextCursor };
     }),
 
   byId: publicProcedure
@@ -485,77 +456,13 @@ export const postRouter = router({
       const found = await db.query.post.findFirst({
         where: eq(post.id, input.id),
         with: {
-          linkPreview: true,
-          author: {
-            columns: {
-              id: true,
-              name: true,
-              username: true,
-              displayUsername: true,
-              emailVerified: true,
-              image: true,
-            },
-          },
-          media: {
-            orderBy: (media, { asc }) => [asc(media.position)],
-          },
-          // The embedded post, when this is a quote post.
-          quotedPost: {
-            with: {
-              linkPreview: true,
-              author: {
-                columns: {
-                  id: true,
-                  name: true,
-                  username: true,
-                  displayUsername: true,
-                  emailVerified: true,
-                  image: true,
-                },
-              },
-              media: {
-                orderBy: (media, { asc }) => [asc(media.position)],
-              },
-            },
-          },
-          // Parent post, when this is a reply — the detail page renders it
-          // above the focused post with a thread line.
-          replyTo: {
-            with: {
-              linkPreview: true,
-              author: {
-                columns: {
-                  id: true,
-                  name: true,
-                  username: true,
-                  displayUsername: true,
-                  emailVerified: true,
-                  image: true,
-                },
-              },
-              media: {
-                orderBy: (media, { asc }) => [asc(media.position)],
-              },
-              quotedPost: {
-                with: {
-                  linkPreview: true,
-                  author: {
-                    columns: {
-                      id: true,
-                      name: true,
-                      username: true,
-                      displayUsername: true,
-                      emailVerified: true,
-                      image: true,
-                    },
-                  },
-                  media: {
-                    orderBy: (media, { asc }) => [asc(media.position)],
-                  },
-                },
-              },
-            },
-          },
+          // `postWith` covers the focused post itself (author, media, link
+          // card, and its quoted post). The detail page adds two relations no
+          // feed needs:
+          ...postWith,
+          // Parent post, when this is a reply — rendered above the focused
+          // post with a thread line.
+          replyTo: { with: postWith },
           replies: {
             orderBy: (reply, { asc, desc }) =>
               input.replySort === 'top'
@@ -563,40 +470,7 @@ export const postRouter = router({
                 : input.replySort === 'oldest'
                   ? [asc(reply.createdAt), asc(reply.id)]
                   : [desc(reply.createdAt), desc(reply.id)],
-            with: {
-              linkPreview: true,
-              author: {
-                columns: {
-                  id: true,
-                  name: true,
-                  username: true,
-                  displayUsername: true,
-                  emailVerified: true,
-                  image: true,
-                },
-              },
-              media: {
-                orderBy: (media, { asc }) => [asc(media.position)],
-              },
-              quotedPost: {
-                with: {
-                  linkPreview: true,
-                  author: {
-                    columns: {
-                      id: true,
-                      name: true,
-                      username: true,
-                      displayUsername: true,
-                      emailVerified: true,
-                      image: true,
-                    },
-                  },
-                  media: {
-                    orderBy: (media, { asc }) => [asc(media.position)],
-                  },
-                },
-              },
-            },
+            with: postWith,
           },
         },
       });
@@ -807,40 +681,7 @@ export const postRouter = router({
           ),
           orderBy: [desc(post.createdAt), desc(post.id)],
           limit: limit + 1,
-          with: {
-            linkPreview: true,
-            author: {
-              columns: {
-                id: true,
-                name: true,
-                username: true,
-                displayUsername: true,
-                emailVerified: true,
-                image: true,
-              },
-            },
-            media: {
-              orderBy: (media, { asc }) => [asc(media.position)],
-            },
-            quotedPost: {
-              with: {
-                linkPreview: true,
-                author: {
-                  columns: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    displayUsername: true,
-                    emailVerified: true,
-                    image: true,
-                  },
-                },
-                media: {
-                  orderBy: (media, { asc }) => [asc(media.position)],
-                },
-              },
-            },
-          },
+          with: postWith,
         });
       }
 
@@ -868,14 +709,8 @@ export const postRouter = router({
         ctx.session?.user.id,
         rows.map((row) => row.id),
       );
-      const items = rows.map((row) => ({
-        ...row,
-        likedByMe: engagement.liked.has(row.id),
-        savedByMe: engagement.saved.has(row.id),
-        repostedByMe: engagement.reposted.has(row.id),
-      }));
 
-      return { items, nextCursor };
+      return { items: stampEngagement(rows, engagement), nextCursor };
     }),
 
   // The viewer's own bookmarks — protected because saves are private to
@@ -905,11 +740,11 @@ export const postRouter = router({
         userId,
         rows.map((row) => row.id),
       );
-      const items = rows.map((row) => ({
+      // Every row here is by definition saved by the viewer, so the flag is
+      // asserted rather than looked up.
+      const items = stampEngagement(rows, engagement).map((row) => ({
         ...row,
-        likedByMe: engagement.liked.has(row.id),
         savedByMe: true,
-        repostedByMe: engagement.reposted.has(row.id),
       }));
 
       return { items, nextCursor };
