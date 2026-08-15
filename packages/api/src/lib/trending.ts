@@ -5,12 +5,12 @@ import { asc, lt, sql } from 'drizzle-orm';
 /**
  * Trending = velocity, not volume.
  *
- * A tag's score is its current-hour distinct-author count divided by its own
- * 23-hour baseline. That ratio is what stops a permanently-popular tag from
- * camping the list: #nba has a huge baseline, so it needs a genuinely
- * abnormal hour to score well, while a tag nobody used yesterday can spike
- * with far fewer authors. Ranking by raw count instead would give you the
- * same ten tags every day.
+ * A tag's score is its recent-window distinct-author count divided by its own
+ * baseline (the rest of the 24h lookback). That ratio is what stops a
+ * permanently-popular tag from camping the list: #nba has a huge baseline, so
+ * it needs a genuinely abnormal window to score well, while a tag nobody used
+ * yesterday can spike with far fewer authors. Ranking by raw count instead
+ * would give you the same ten tags every day.
  *
  * Two anti-gaming properties fall out of counting DISTINCT authors rather
  * than posts:
@@ -34,9 +34,14 @@ const TRENDING_LIMIT = 10;
 // history", so a spike has to beat a small floor, not beat zero.
 const BASELINE_SMOOTHING = 2.0;
 
-// Rolling window and its split point: the last hour is "now", the 23 hours
-// before it are the tag's own normal.
-const BASELINE_HOURS = 23;
+// Rolling window and its split point. "Now" is the last RECENT_WINDOW_HOURS;
+// BASELINE_HOURS is the rest of the 24h lookback, used as the tag's normal.
+// Widening RECENT_WINDOW_HOURS is how you make a trend survive longer before
+// falling off the list — at 1h, a tag disappears the moment its last mention
+// ages past the hour mark, which reads as "gone" way too fast for testing or
+// for slow-moving spikes.
+const RECENT_WINDOW_HOURS = 3;
+const BASELINE_HOURS = 24 - RECENT_WINDOW_HOURS;
 
 // Housekeeping horizon. Mentions older than this can't influence a 24h
 // window, so they're pure storage cost.
@@ -58,7 +63,6 @@ type ScoredRow = {
  * loop, count per tag) would be N+1 round-trips over HTTP from a Worker.
  */
 export async function computeTrending(db = createDb()) {
-  console.log('compute trending runs', new Date());
   // `filter (where ...)` splits the two windows in a single pass over the
   // 24h slice of the index, so the scan happens once, not twice.
   //
@@ -70,13 +74,13 @@ export async function computeTrending(db = createDb()) {
       select
         hashtag,
         count(distinct author_id) filter (
-          where created_at >= now() - interval '1 hour'
+          where created_at >= now() - make_interval(hours => ${RECENT_WINDOW_HOURS})
         ) as recent_authors,
         count(distinct author_id) filter (
-          where created_at < now() - interval '1 hour'
+          where created_at < now() - make_interval(hours => ${RECENT_WINDOW_HOURS})
         ) as prior_authors
       from hashtag_mention
-      where created_at >= now() - interval '24 hours'
+      where created_at >= now() - make_interval(hours => ${RECENT_WINDOW_HOURS + BASELINE_HOURS})
       group by hashtag
     )
     select

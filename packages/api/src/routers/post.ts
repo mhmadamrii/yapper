@@ -189,7 +189,7 @@ const postAuthorColumns = {
   displayUsername: true,
   emailVerified: true,
   image: true,
-};
+} as const;
 
 // The one definition of "a post, hydrated for rendering". Every feed shares
 // it, so a new relation on the post card (link previews, media alt text, the
