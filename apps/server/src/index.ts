@@ -17,6 +17,22 @@ export { ConversationRoom } from './durable-objects/conversation-room';
 
 const app = new Hono();
 
+// Diagnostic-only request timing for the Neon latency investigation. Flip to
+// false once the root cause (cold start vs. slow query vs. N+1) is confirmed.
+const REQUEST_TIMING_ENABLED = true;
+
+if (REQUEST_TIMING_ENABLED) {
+  app.use('*', async (c, next) => {
+    const start = Date.now();
+    console.log(`[REQ] ${c.req.method} ${c.req.path} received start=${start}`);
+    await next();
+    const end = Date.now();
+    console.log(
+      `[REQ] ${c.req.method} ${c.req.path} → ${c.res.status} ${end - start}ms start=${start} end=${end}`,
+    );
+  });
+}
+
 app.use(logger());
 app.use(
   '/*',

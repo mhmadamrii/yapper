@@ -21,6 +21,7 @@ import {
 import { z } from 'zod';
 
 import { broadcastMessage } from '../lib/conversation-broadcast';
+import { logDbTiming } from '../lib/debug-timing';
 import { assertOwner, assertParticipant } from '../lib/message-auth';
 import { getViewerExclusions } from '../lib/social-filters';
 import { protectedProcedure, router } from '../index';
@@ -277,6 +278,7 @@ export const messageRouter = router({
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
     const db = createDb();
+    const dbStart = Date.now();
     const [row] = await db
       .select({ count: sql<number>`count(*)` })
       .from(conversationParticipant)
@@ -293,6 +295,7 @@ export const messageRouter = router({
           ),
         ),
       );
+    logDbTiming('message.unreadCount', dbStart);
 
     return { count: Number(row?.count ?? 0) };
   }),

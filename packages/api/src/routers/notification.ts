@@ -7,6 +7,7 @@ import {
 import { z } from 'zod';
 
 import { protectedProcedure, router } from '../index';
+import { logDbTiming } from '../lib/debug-timing';
 
 export const notificationRouter = router({
   list: protectedProcedure
@@ -96,6 +97,7 @@ export const notificationRouter = router({
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
     const db = createDb();
+    const dbStart = Date.now();
     const [row] = await db
       .select({ count: sql<number>`count(*)` })
       .from(notification)
@@ -105,6 +107,7 @@ export const notificationRouter = router({
           isNull(notification.readAt),
         ),
       );
+    logDbTiming('notification.unreadCount', dbStart);
 
     return { count: Number(row?.count ?? 0) };
   }),

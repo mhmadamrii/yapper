@@ -2,6 +2,7 @@ import { createDb } from '@yapper/db';
 import { protectedProcedure, router } from '../index';
 import { z } from 'zod';
 
+import { logDbTiming } from '../lib/debug-timing';
 import {
   DEFAULT_RECOMMENDATION_LIMIT,
   getFollowRecommendations,
@@ -25,6 +26,13 @@ export const recommendationRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const db = createDb();
-      return getFollowRecommendations(db, ctx.session.user.id, input.limit);
+      const dbStart = Date.now();
+      const result = await getFollowRecommendations(
+        db,
+        ctx.session.user.id,
+        input.limit,
+      );
+      logDbTiming('recommendation.follows', dbStart);
+      return result;
     }),
 });
