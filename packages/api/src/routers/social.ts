@@ -37,8 +37,8 @@ export const socialRouter = router({
 
         if (inserted.length > 0) {
           // Blocking severs any existing follow relationship in either direction.
-          const [deletedAB, deletedBA] = await db.batch([
-            db
+          const [deletedAB, deletedBA] = await db.transaction(async (tx) => {
+            const ab = await tx
               .delete(follow)
               .where(
                 and(
@@ -46,8 +46,8 @@ export const socialRouter = router({
                   eq(follow.followeeId, input.userId),
                 ),
               )
-              .returning({ id: follow.followerId }),
-            db
+              .returning({ id: follow.followerId });
+            const ba = await tx
               .delete(follow)
               .where(
                 and(
@@ -55,8 +55,9 @@ export const socialRouter = router({
                   eq(follow.followeeId, blockerId),
                 ),
               )
-              .returning({ id: follow.followerId }),
-          ]);
+              .returning({ id: follow.followerId });
+            return [ab, ba] as const;
+          });
 
           const decrements: Promise<unknown>[] = [];
           if (deletedAB.length > 0) {

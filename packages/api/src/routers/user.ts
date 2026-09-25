@@ -161,9 +161,9 @@ export const userRouter = router({
           .onConflictDoNothing()
           .returning({ followerId: follow.followerId });
         if (inserted.length > 0) {
-          // Both counters in one batch — atomic on the Neon HTTP driver.
-          await db.batch([
-            db
+          // Both counters in one transaction — atomic.
+          await db.transaction(async (tx) => {
+            await tx
               .insert(userStats)
               .values({ userId: input.userId, followerCount: 1 })
               .onConflictDoUpdate({
@@ -171,8 +171,8 @@ export const userRouter = router({
                 set: {
                   followerCount: sql`${userStats.followerCount} + 1`,
                 },
-              }),
-            db
+              });
+            await tx
               .insert(userStats)
               .values({ userId: followerId, followingCount: 1 })
               .onConflictDoUpdate({
@@ -180,8 +180,8 @@ export const userRouter = router({
                 set: {
                   followingCount: sql`${userStats.followingCount} + 1`,
                 },
-              }),
-          ]);
+              });
+          });
           await notify(db, {
             recipientId: input.userId,
             actorId: followerId,
@@ -200,20 +200,20 @@ export const userRouter = router({
           )
           .returning({ followerId: follow.followerId });
         if (deleted.length > 0) {
-          await db.batch([
-            db
+          await db.transaction(async (tx) => {
+            await tx
               .update(userStats)
               .set({
                 followerCount: sql`GREATEST(${userStats.followerCount} - 1, 0)`,
               })
-              .where(eq(userStats.userId, input.userId)),
-            db
+              .where(eq(userStats.userId, input.userId));
+            await tx
               .update(userStats)
               .set({
                 followingCount: sql`GREATEST(${userStats.followingCount} - 1, 0)`,
               })
-              .where(eq(userStats.userId, followerId)),
-          ]);
+              .where(eq(userStats.userId, followerId));
+          });
         }
       }
 

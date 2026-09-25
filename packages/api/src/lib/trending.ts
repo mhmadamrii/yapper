@@ -95,42 +95,33 @@ export async function computeTrending(db = createDb()) {
     limit ${TRENDING_LIMIT}
   `);
 
-  const top = result.rows.map((row, i) => ({
+  const top = result.map((row, i) => ({
     hashtag: row.hashtag,
     rank: i + 1,
     score: Number(row.score),
     recentAuthors: Number(row.recent_authors),
   }));
 
-  // Neon's HTTP driver has no interactive transactions, but `db.batch` ships
-  // every statement in one request wrapped in a single transaction — so
-  // readers never observe a half-rebuilt list (either the old snapshot or the
-  // new one, never an empty middle).
+  // Wrapped in one interactive transaction so readers never observe a
+  // half-rebuilt list (either the old snapshot or the new one, never an
+  // empty middle).
   //
   // Full delete + reinsert rather than an upsert: the table is ~10 rows, and
   // a tag that fell off the list has to disappear, which a merge wouldn't do.
-  const clearSnapshot = db.delete(trendingTopic);
-  const purgeOldMentions = db
-    .delete(hashtagMention)
-    .where(
-      lt(
-        hashtagMention.createdAt,
-        sql`now() - make_interval(days => ${MENTION_RETENTION_DAYS})`,
-      ),
-    );
-
-  if (top.length === 0) {
-    // Nothing cleared the floor — the list legitimately goes empty rather
-    // than serving a stale spike from an hour ago.
-    await db.batch([clearSnapshot, purgeOldMentions]);
-    return { count: 0 };
-  }
-
-  await db.batch([
-    clearSnapshot,
-    db.insert(trendingTopic).values(top),
-    purgeOldMentions,
-  ]);
+  await db.transaction(async (tx) => {
+    await tx.delete(trendingTopic);
+    if (top.length > 0) {
+      await tx.insert(trendingTopic).values(top);
+    }
+    await tx
+      .delete(hashtagMention)
+      .where(
+        lt(
+          hashtagMention.createdAt,
+          sql`now() - make_interval(days => ${MENTION_RETENTION_DAYS})`,
+        ),
+      );
+  });
 
   return { count: top.length };
 }

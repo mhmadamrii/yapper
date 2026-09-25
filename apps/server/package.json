@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc -b",
-    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server"
+    "start": "bun run src/index.ts"
   },
   "dependencies": {
     "@hono/trpc-server": "^0.4.2",
@@ -21,12 +21,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
+    "@types/bun": "^1.4.2",
     "@types/node": "catalog:",
     "@yapper/config": "workspace:*",
-    "alchemy": "catalog:",
     "tsdown": "^0.22.3",
-    "typescript": "catalog:",
-    "wrangler": "^4.107.0"
+    "typescript": "catalog:"
   }
 }

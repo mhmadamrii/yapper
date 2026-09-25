@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
+import type { Database, Transaction } from '@yapper/db';
 import { like, repost, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
 import { follow, userStats } from '@yapper/db/schema/social';
@@ -36,10 +37,10 @@ export const mediaInput = z.object({
 });
 
 // Shared by post.create and draft.publish (converting a draft into a real
-// post) — Neon HTTP driver has no interactive transactions, so the caller
-// runs this via db.batch for atomicity.
+// post) — the caller runs this inside `db.transaction(...)` for atomicity,
+// passing the `tx` handle through as `db`.
 export function buildPostInsertStatements(
-  db: ReturnType<typeof createDb>,
+  db: Database | Transaction,
   args: {
     postId: string;
     authorId: string;
@@ -605,8 +606,8 @@ export const postRouter = router({
         }
       }
 
-      await db.batch(
-        buildPostInsertStatements(db, {
+      await db.transaction(async (tx) => {
+        const statements = buildPostInsertStatements(tx, {
           postId,
           authorId: ctx.session.user.id,
           content: input.content,
@@ -614,8 +615,11 @@ export const postRouter = router({
           replyToPostId: input.replyToPostId,
           quotedPostId: input.quotedPostId,
           linkPreviewUrl,
-        }),
-      );
+        });
+        for (const statement of statements) {
+          await statement;
+        }
+      });
 
       if (input.replyToPostId && parentAuthorId) {
         await notify(db, {

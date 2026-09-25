@@ -202,15 +202,15 @@ export const messageRouter = router({
       const now = new Date();
       const preview = input.body.slice(0, 140);
 
-      await db.batch([
-        db.insert(message).values({
+      await db.transaction(async (tx) => {
+        await tx.insert(message).values({
           id,
           conversationId: input.conversationId,
           senderId,
           body: input.body,
           createdAt: now,
-        }),
-        db
+        });
+        await tx
           .update(conversation)
           .set({
             lastMessageId: id,
@@ -218,8 +218,8 @@ export const messageRouter = router({
             lastMessageSenderId: senderId,
             lastMessageAt: now,
           })
-          .where(eq(conversation.id, input.conversationId)),
-        db
+          .where(eq(conversation.id, input.conversationId));
+        await tx
           .update(conversationParticipant)
           .set({ lastReadAt: now, lastReadMessageId: id })
           .where(
@@ -227,8 +227,8 @@ export const messageRouter = router({
               eq(conversationParticipant.conversationId, input.conversationId),
               eq(conversationParticipant.userId, senderId),
             ),
-          ),
-      ]);
+          );
+      });
 
       await broadcastMessage(input.conversationId, {
         id,
@@ -533,8 +533,8 @@ export const messageRouter = router({
       if (participant.role === 'owner' && !stillHasOwner) {
         // Auto-transfer ownership to the longest-standing remaining member.
         const successor = remaining[0]!;
-        await db.batch([
-          db
+        await db.transaction(async (tx) => {
+          await tx
             .delete(conversationParticipant)
             .where(
               and(
@@ -544,8 +544,8 @@ export const messageRouter = router({
                 ),
                 eq(conversationParticipant.userId, userId),
               ),
-            ),
-          db
+            );
+          await tx
             .update(conversationParticipant)
             .set({ role: 'owner' })
             .where(
@@ -556,8 +556,8 @@ export const messageRouter = router({
                 ),
                 eq(conversationParticipant.userId, successor.userId),
               ),
-            ),
-        ]);
+            );
+        });
       } else {
         await db
           .delete(conversationParticipant)

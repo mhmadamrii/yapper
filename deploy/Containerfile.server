@@ -1,0 +1,17 @@
+# Build context is the repo root (monorepo) — see deploy/podman-compose.yml.
+#
+# pnpm installs the workspace (respects the pnpm-workspace.yaml `catalog:`
+# protocol and workspace:* deps); Bun is used purely as the runtime, run
+# directly against TS source, so no bundling step is needed.
+FROM node:22-slim AS deps
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile --filter=server...
+
+FROM oven/bun:1-slim
+WORKDIR /app
+COPY --from=deps /app /app
+WORKDIR /app/apps/server
+EXPOSE 3000
+CMD ["bun", "run", "src/index.ts"]

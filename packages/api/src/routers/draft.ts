@@ -60,17 +60,17 @@ export const draftRouter = router({
       const db = createDb();
       const draftId = crypto.randomUUID();
 
-      const insertDraft = db.insert(postDraft).values({
+      const draftValues = {
         id: draftId,
         authorId: ctx.session.user.id,
         content: input.content,
         replyToPostId: input.replyToPostId,
-      });
+      };
 
       if (input.media.length > 0) {
-        await db.batch([
-          insertDraft,
-          db.insert(draftMedia).values(
+        await db.transaction(async (tx) => {
+          await tx.insert(postDraft).values(draftValues);
+          await tx.insert(draftMedia).values(
             input.media.map((m, i) => ({
               draftId,
               fileId: m.fileId,
@@ -82,10 +82,10 @@ export const draftRouter = router({
               altText: m.altText,
               position: i,
             })),
-          ),
-        ]);
+          );
+        });
       } else {
-        await insertDraft;
+        await db.insert(postDraft).values(draftValues);
       }
 
       return { id: draftId };
@@ -120,14 +120,10 @@ export const draftRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Draft not found' });
       }
 
-      const deleteMedia = db
-        .delete(draftMedia)
-        .where(eq(draftMedia.draftId, input.id));
-
       if (input.media.length > 0) {
-        await db.batch([
-          deleteMedia,
-          db.insert(draftMedia).values(
+        await db.transaction(async (tx) => {
+          await tx.delete(draftMedia).where(eq(draftMedia.draftId, input.id));
+          await tx.insert(draftMedia).values(
             input.media.map((m, i) => ({
               draftId: input.id,
               fileId: m.fileId,
@@ -139,10 +135,10 @@ export const draftRouter = router({
               altText: m.altText,
               position: i,
             })),
-          ),
-        ]);
+          );
+        });
       } else {
-        await deleteMedia;
+        await db.delete(draftMedia).where(eq(draftMedia.draftId, input.id));
       }
 
       return { id: input.id };
@@ -217,8 +213,8 @@ export const draftRouter = router({
       }
 
       const postId = crypto.randomUUID();
-      await db.batch([
-        ...buildPostInsertStatements(db, {
+      await db.transaction(async (tx) => {
+        const statements = buildPostInsertStatements(tx, {
           postId,
           authorId: ctx.session.user.id,
           content: draft.content,
@@ -232,9 +228,12 @@ export const draftRouter = router({
             altText: m.altText ?? undefined,
           })),
           replyToPostId: draft.replyToPostId ?? undefined,
-        }),
-        db.delete(postDraft).where(eq(postDraft.id, input.id)),
-      ]);
+        });
+        for (const statement of statements) {
+          await statement;
+        }
+        await tx.delete(postDraft).where(eq(postDraft.id, input.id));
+      });
 
       if (draft.replyToPostId && parentAuthorId) {
         await notify(db, {
