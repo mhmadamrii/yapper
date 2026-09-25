@@ -5,16 +5,8 @@ services:
       dockerfile: deploy/Containerfile.server
     container_name: yapper_migrate
     entrypoint: []
-    command:
-      [
-        'pnpm',
-        '--filter',
-        '@yapper/db',
-        'exec',
-        'drizzle-kit',
-        'push',
-        '--force',
-      ]
+    working_dir: /app/packages/db
+    command: ['bun', 'x', 'drizzle-kit', 'push', '--force']
     env_file:
       - ../apps/server/.env.production
     networks:
