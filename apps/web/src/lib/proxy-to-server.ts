@@ -15,9 +15,17 @@ export async function proxyToServer(request: Request, path: string) {
     getServerUrl(env.VITE_SERVER_URL),
   );
 
+  // Forwarding the original `content-length` alongside a piped stream body
+  // can disagree with how the runtime re-frames that stream, and undici
+  // throws `RequestContentLengthMismatchError` when the two don't match —
+  // let fetch recompute it from the actual body instead.
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.delete('content-length');
+  forwardedHeaders.delete('host');
+
   const response = await fetch(target, {
     method: request.method,
-    headers: request.headers,
+    headers: forwardedHeaders,
     body: request.body,
     // @ts-expect-error -- Node's fetch requires `duplex` when the body is a stream
     duplex: 'half',

@@ -6,7 +6,13 @@ import dotenv from 'dotenv';
 const DEFAULT_ENVIRONMENT = 'preview';
 const VALID_ENVIRONMENTS = new Set(['development', 'preview', 'production']);
 const VERCEL_COMMAND = ['pnpm', 'exec', 'vercel'] as const;
-const DEFAULT_FILES = ['apps/web/.env'];
+// Production gets its own values file so `apps/web/.env` (local dev, e.g.
+// VITE_SERVER_URL=http://localhost:3000) never leaks into the deployed app.
+const DEFAULT_FILES_BY_ENVIRONMENT: Record<string, string[]> = {
+  production: ['apps/web/.env.production'],
+  preview: ['apps/web/.env'],
+  development: ['apps/web/.env'],
+};
 const SKIP_KEYS = new Set([]);
 const OVERRIDE_KEYS = new Map([]);
 
@@ -36,7 +42,8 @@ for (const arg of remainingArgs) {
   }
 }
 const vercelArgs = [...passthroughArgs, ...forwardedArgs];
-const envFiles = files.length > 0 ? files : DEFAULT_FILES;
+const envFiles =
+  files.length > 0 ? files : DEFAULT_FILES_BY_ENVIRONMENT[environment];
 
 if (envFiles.length === 0) {
   console.log('No env files configured for this Vercel stack.');
