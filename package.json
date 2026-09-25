@@ -17,7 +17,7 @@
     "db:studio": "turbo run db:studio -F @yapper/db",
     "db:generate": "turbo run db:generate -F @yapper/db",
     "db:migrate": "turbo run db:migrate -F @yapper/db",
-    "deploy:server": "ssh <vps-host> 'cd /opt/yapper && git pull && podman-compose -f deploy/podman-compose.yml up -d --build server'",
+    "deploy:server": "ssh <vps-host> 'cd /opt/yapper && git pull && podman-compose -f deploy/podman-compose.yml run --rm yapper-migrate && podman-compose -f deploy/podman-compose.yml up -d --build server'",
     "destroy": "turbo run destroy -F @yapper/infra",
     "deploy:setup": "vercel link",
     "dev:vercel": "vercel dev -L",

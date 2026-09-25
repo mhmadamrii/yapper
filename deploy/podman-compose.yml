@@ -1,4 +1,25 @@
 services:
+  yapper-migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Containerfile.server
+    container_name: yapper_migrate
+    entrypoint: []
+    command:
+      [
+        'pnpm',
+        '--filter',
+        '@yapper/db',
+        'exec',
+        'drizzle-kit',
+        'push',
+        '--force',
+      ]
+    env_file:
+      - ../apps/server/.env.production
+    networks:
+      - kommers_net
+
   yapper-server:
     build:
       context: ..
