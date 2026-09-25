@@ -1,39 +1,21 @@
 services:
-  server:
+  yapper-server:
     build:
       context: ..
       dockerfile: deploy/Containerfile.server
+    container_name: yapper_server
     restart: unless-stopped
     env_file:
       - ../apps/server/.env.production
     networks:
-      - internal
-      # Existing "kommers" Postgres stack's network — server reaches it at
-      # the `postgres` DNS alias (matches DATABASE_URL's host). Set the
-      # actual network name below (`podman network ls` on the VPS).
+      # Existing "kommers" stack's network — this is also where its Postgres
+      # (alias `postgres`, matches DATABASE_URL) and its own Caddy live. Do
+      # NOT run a second Caddy here — the kommers stack's Caddy already owns
+      # host ports 80/443; add a site block to *its* Caddyfile instead (see
+      # deploy/Caddyfile in this repo for the block to add).
       - kommers_net
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - '80:80'
-      - '443:443'
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - server
-    networks:
-      - internal
-
 networks:
-  internal:
   kommers_net:
     external: true
     name: kommers_default
-
-volumes:
-  caddy_data:
-  caddy_config:

@@ -1,3 +1,13 @@
+# Not run standalone by deploy/podman-compose.yml — the VPS already runs a
+# Caddy container as part of the existing "kommers" stack, bound to host
+# ports 80/443. Append this block to *that* Caddyfile instead (find its
+# mounted path with `podman inspect kommers_caddy_1`), then reload it:
+#   podman exec kommers_caddy_1 caddy reload --config /etc/caddy/Caddyfile
+#
+# `yapper_server` is this container's `container_name` (see
+# deploy/podman-compose.yml) — reachable because both it and
+# kommers_caddy_1 sit on the shared `kommers_default` network.
+
 api.yappers.online {
-	reverse_proxy server:3000
+	reverse_proxy yapper_server:3000
 }
