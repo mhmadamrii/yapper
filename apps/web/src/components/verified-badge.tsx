@@ -1,5 +1,6 @@
 import { BadgeCheck } from 'lucide-react';
 import { cn } from '@yapper/ui/lib/utils';
+// loremipsum
 
 /** Blue verification seal shown next to verified users' display names. */
 export function VerifiedBadge({ className }: { className?: string }) {
