@@ -28,6 +28,23 @@ services:
       # deploy/Caddyfile in this repo for the block to add).
       - kommers_net
 
+  yapper-imgproxy:
+    image: docker.io/darthsim/imgproxy:latest
+    container_name: yapper_imgproxy
+    restart: unless-stopped
+    # Reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from the same file —
+    # the S3 client the app server uses for presigned uploads shares these.
+    env_file:
+      - ../apps/server/.env.production
+    environment:
+      IMGPROXY_USE_S3: 'true'
+      IMGPROXY_S3_ENDPOINT: http://minio:9000
+      IMGPROXY_S3_REGION: us-east-1
+      # MinIO speaks path-style, not virtual-hosted-style, buckets.
+      AWS_S3_FORCE_PATH_STYLE: 'true'
+    networks:
+      - kommers_net
+
 networks:
   kommers_net:
     external: true
