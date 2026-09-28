@@ -7,6 +7,7 @@ import { seo } from '@/lib/seo';
 
 import {
   createFileRoute,
+  Link,
   useNavigate,
   useRouter,
 } from '@tanstack/react-router';
@@ -15,6 +16,7 @@ import {
   Accessibility,
   ArrowLeft,
   Bell,
+  Bot,
   ChevronRight,
   CircleHelp,
   FlaskConical,
@@ -95,6 +97,14 @@ function SettingsPage() {
               <UserPlus className="size-5" />
               <span className="font-medium">Add another account</span>
             </button>
+            <Link
+              to="/bots"
+              className="hover:bg-accent/50 border-border flex w-full items-center gap-4 border-b px-4 py-3.5 text-left transition-colors"
+            >
+              <Bot className="size-5" />
+              <span className="flex-1 font-medium">Bots</span>
+              <ChevronRight className="text-muted-foreground size-4" />
+            </Link>
             <div className="border-border border-b">
               <For each={SETTINGS_ROWS}>
                 {({ label, icon: Icon }) => (

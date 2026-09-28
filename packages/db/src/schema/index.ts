@@ -9,3 +9,4 @@ export * from './draft';
 export * from './message';
 export * from './trending';
 export * from './interest';
+export * from './bot';

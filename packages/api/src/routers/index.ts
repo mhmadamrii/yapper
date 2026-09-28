@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../index';
+import { botRouter } from './bot';
 import { draftRouter } from './draft';
 import { interestRouter } from './interest';
 import { linkRouter } from './link';
@@ -12,6 +13,7 @@ import { trendingRouter } from './trending';
 import { userRouter } from './user';
 
 export const appRouter = router({
+  bot: botRouter,
   draft: draftRouter,
   interest: interestRouter,
   link: linkRouter,

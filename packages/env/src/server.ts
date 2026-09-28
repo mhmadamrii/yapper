@@ -15,6 +15,8 @@ export const env = createEnv({
     MEDIA_S3_REGION: z.string().min(1).default('us-east-1'),
     AWS_ACCESS_KEY_ID: z.string().min(1),
     AWS_SECRET_ACCESS_KEY: z.string().min(1),
+    GEMINI_API_KEY: z.string().min(1),
+    BOT_CREATION_PASSWORD: z.string().min(1),
     PORT: z.coerce.number().default(3000),
   },
   runtimeEnv: process.env,

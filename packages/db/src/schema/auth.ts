@@ -9,6 +9,11 @@ export const user = pgTable('user', {
   displayUsername: text('display_username'),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
+  // Bot accounts are plain `user` rows created directly (never through
+  // better-auth sign-up) — see `packages/api/src/routers/bot.ts`. Not needed
+  // for posts to render correctly, only so the UI/queries can flag or
+  // exclude bots later.
+  isBot: boolean('is_bot').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()

@@ -1,5 +1,6 @@
 import { trpcServer } from '@hono/trpc-server';
 import { createContext } from '@yapper/api/context';
+import { runBotScheduler } from '@yapper/api/lib/bot-scheduler';
 import { subscribeToConversation } from '@yapper/api/lib/conversation-hub';
 import { appRouter } from '@yapper/api/routers/index';
 import { createAuth } from '@yapper/auth';
@@ -89,6 +90,16 @@ app.get('/conversations/:id/stream', async (c) => {
 // Idempotent upsert of the fixed interest catalog — cheap (~24 rows), so
 // it's safe to run on every boot instead of a separate deploy/migration step.
 await ensureInterestsSeeded(createDb());
+
+// Checks for due bots every 5 min and posts on their behalf. A long-lived
+// VPS container process is the right place for this in-process ticker
+// (unlike the Vercel-hosted web app, which can't do this at all).
+const BOT_SCHEDULER_TICK_MS = 5 * 60 * 1000;
+setInterval(() => {
+  runBotScheduler(createDb()).catch((error) => {
+    console.error('[bot-scheduler] tick failed', error);
+  });
+}, BOT_SCHEDULER_TICK_MS);
 
 Bun.serve({
   port: env.PORT,
