@@ -3,10 +3,10 @@ import { cn } from '@yapper/ui/lib/utils';
 import { mediaUrl, uploadToStorage } from '@/lib/media';
 import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import { ChevronDown, Globe, ImageIcon, Smile, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { ChevronDown, Hash, ImageIcon, Smile, X } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
 import { LinkPreviewCard } from '@/components/home/link-preview-card';
@@ -19,6 +19,14 @@ import {
   DialogContent,
   DialogTrigger,
 } from '@yapper/ui/components/dialog';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@yapper/ui/components/dropdown-menu';
 
 const MAX_POST_LENGTH = 500;
 const MAX_IMAGES = 4;
@@ -43,6 +51,7 @@ export interface InitialDraft {
   id: string;
   content: string;
   media: DraftMediaItem[];
+  interestSlug?: string | null;
 }
 
 export function DialogCreatePost({
@@ -58,6 +67,9 @@ export function DialogCreatePost({
   const [existingMedia, setExistingMedia] = useState<DraftMediaItem[]>(
     initialDraft?.media ?? [],
   );
+  const [selectedInterest, setSelectedInterest] = useState<string | null>(
+    initialDraft?.interestSlug ?? null,
+  );
   const [isPosting, setIsPosting] = useState(false);
   const linkPreview = useComposerLinkPreview(text);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +84,25 @@ export function DialogCreatePost({
   const updateDraft = useMutation(trpc.draft.update.mutationOptions());
   const deleteDraft = useMutation(trpc.draft.delete.mutationOptions());
 
+  const interestListQuery = useQuery(trpc.interest.list.queryOptions());
+  const myInterestsQuery = useQuery(
+    trpc.interest.mine.queryOptions(undefined, { enabled: !!session }),
+  );
+  // Viewer's saved interests float to the top of the picker — the rest stay
+  // in the catalog's curated order.
+  const interestOptions = useMemo(() => {
+    const all = interestListQuery.data ?? [];
+    const mine = new Set(myInterestsQuery.data ?? []);
+    return [...all].sort((a, b) => {
+      const aMine = mine.has(a.slug) ? 0 : 1;
+      const bMine = mine.has(b.slug) ? 0 : 1;
+      return aMine - bMine;
+    });
+  }, [interestListQuery.data, myInterestsQuery.data]);
+  const selectedInterestName = interestListQuery.data?.find(
+    (i) => i.slug === selectedInterest,
+  )?.name;
+
   const totalImages = images.length + existingMedia.length;
   const remaining = MAX_POST_LENGTH - text.length;
   const canSubmit = !isPosting && remaining >= 0 && (text.trim().length > 0 || totalImages > 0); // prettier-ignore
@@ -85,6 +116,7 @@ export function DialogCreatePost({
     setText(initialDraft?.content ?? '');
     setImages([]);
     setExistingMedia(initialDraft?.media ?? []);
+    setSelectedInterest(initialDraft?.interestSlug ?? null);
     linkPreview.reset();
   };
 
@@ -154,6 +186,7 @@ export function DialogCreatePost({
         // Undefined when the card was dismissed or the post carries images,
         // so what gets stored matches what the composer showed.
         linkUrl: media.length > 0 ? undefined : linkPreview.linkUrl,
+        interestSlug: selectedInterest ?? undefined,
       });
 
       // Post exists now — that's the goal. Draft cleanup and cache
@@ -192,9 +225,14 @@ export function DialogCreatePost({
           id: initialDraft.id,
           content: text.trim(),
           media,
+          interestSlug: selectedInterest,
         });
       } else {
-        await createDraft.mutateAsync({ content: text.trim(), media });
+        await createDraft.mutateAsync({
+          content: text.trim(),
+          media,
+          interestSlug: selectedInterest ?? undefined,
+        });
       }
       await queryClient.invalidateQueries({
         queryKey: trpc.draft.list.queryKey(),
@@ -323,11 +361,37 @@ export function DialogCreatePost({
         </div>
 
         <div className="px-4 pb-3">
-          <button className="bg-secondary text-secondary-foreground hover:bg-accent flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors">
-            <Globe className="size-4" />
-            Anyone can interact
-            <ChevronDown className="size-4" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button className="bg-secondary text-secondary-foreground hover:bg-accent flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors" />
+              }
+            >
+              <Hash className="size-4" />
+              {selectedInterestName ?? 'General'}
+              <ChevronDown className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="max-h-72 w-56">
+              <DropdownMenuRadioGroup
+                value={selectedInterest ?? ''}
+                onValueChange={(value) =>
+                  setSelectedInterest(value === '' ? null : value)
+                }
+              >
+                <DropdownMenuRadioItem value="">General</DropdownMenuRadioItem>
+                <For each={interestOptions}>
+                  {(option) => (
+                    <DropdownMenuRadioItem
+                      key={option.slug}
+                      value={option.slug}
+                    >
+                      {option.name}
+                    </DropdownMenuRadioItem>
+                  )}
+                </For>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="border-border flex items-center justify-between border-t px-4 py-3">

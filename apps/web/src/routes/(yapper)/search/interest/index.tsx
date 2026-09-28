@@ -1,12 +1,12 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import { cn } from '@yapper/ui/lib/utils';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
-import { For } from '@/components/control-flow';
+import { useEffect, useState } from 'react';
+import { InterestPillGrid } from '@/components/interest-pill-grid';
 import { seo } from '@/lib/seo';
-import { interestTags } from '../-dummy-explore';
-import { allInterests } from './-dummy-interests';
+import { toast } from '@/lib/toast';
+import { useTRPC } from '@/utils/trpc';
 
 export const Route = createFileRoute('/(yapper)/search/interest/')({
   head: () => ({ meta: seo({ title: 'Interests' }) }),
@@ -15,15 +15,42 @@ export const Route = createFileRoute('/(yapper)/search/interest/')({
 
 function InterestsPage() {
   const router = useRouter();
-  const [selected, setSelected] = useState<Set<string>>(new Set(interestTags));
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
 
-  function toggle(interest: string) {
+  const interestListQuery = useQuery(trpc.interest.list.queryOptions());
+  const myInterestsQuery = useQuery(trpc.interest.mine.queryOptions());
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Seed local selection from the saved set once it loads — a ref-less
+  // one-time sync would fight the user's own toggles on every refetch, so
+  // this only runs while the query hasn't resolved yet.
+  useEffect(() => {
+    if (myInterestsQuery.data) {
+      setSelected(new Set(myInterestsQuery.data));
+    }
+  }, [myInterestsQuery.data]);
+
+  const setMine = useMutation(
+    trpc.interest.setMine.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.interest.mine.queryKey(),
+        });
+        toast.success('Interests saved');
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  function toggle(slug: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(interest)) {
-        next.delete(interest);
+      if (next.has(slug)) {
+        next.delete(slug);
       } else {
-        next.add(interest);
+        next.add(slug);
       }
       return next;
     });
@@ -46,23 +73,22 @@ function InterestsPage() {
         Your selected interests help us serve you content you care about.
       </p>
 
-      <div className="flex flex-wrap gap-3 p-4">
-        <For each={allInterests}>
-          {(interest) => (
-            <button
-              key={interest}
-              onClick={() => toggle(interest)}
-              className={cn(
-                'rounded-full px-5 py-3 font-semibold transition-colors',
-                selected.has(interest)
-                  ? 'bg-foreground text-background'
-                  : 'bg-accent text-foreground hover:bg-accent/70',
-              )}
-            >
-              {interest}
-            </button>
-          )}
-        </For>
+      <div className="p-4">
+        <InterestPillGrid
+          interests={interestListQuery.data ?? []}
+          selected={selected}
+          onToggle={toggle}
+        />
+      </div>
+
+      <div className="border-border sticky bottom-0 border-t p-4">
+        <Button
+          className="w-full rounded-full"
+          disabled={setMine.isPending}
+          onClick={() => setMine.mutate({ interestSlugs: [...selected] })}
+        >
+          {setMine.isPending ? 'Saving...' : 'Save'}
+        </Button>
       </div>
     </main>
   );

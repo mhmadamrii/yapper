@@ -52,6 +52,7 @@ export const draftRouter = router({
         content: z.string().max(300),
         media: z.array(mediaInput).max(4).default([]),
         replyToPostId: z.string().min(1).optional(),
+        interestSlug: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -65,6 +66,7 @@ export const draftRouter = router({
         authorId: ctx.session.user.id,
         content: input.content,
         replyToPostId: input.replyToPostId,
+        interestSlug: input.interestSlug,
       };
 
       if (input.media.length > 0) {
@@ -91,14 +93,19 @@ export const draftRouter = router({
       return { id: draftId };
     }),
 
-  // Content/media only — a draft's replyToPostId is set once at creation
-  // and doesn't change on edit.
+  // Content/media/interest only — a draft's replyToPostId is set once at
+  // creation and doesn't change on edit. `interestSlug` is nullable rather
+  // than optional (like `content`, always sent in full) so picking "General"
+  // explicitly clears a previously-set topic instead of leaving it untouched
+  // — drizzle's `.set()` skips `undefined` fields but honors an explicit
+  // `null`.
   update: protectedProcedure
     .input(
       z.object({
         id: z.string().min(1),
         content: z.string().max(300),
         media: z.array(mediaInput).max(4).default([]),
+        interestSlug: z.string().min(1).nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -107,7 +114,7 @@ export const draftRouter = router({
       const db = createDb();
       const updated = await db
         .update(postDraft)
-        .set({ content: input.content })
+        .set({ content: input.content, interestSlug: input.interestSlug })
         .where(
           and(
             eq(postDraft.id, input.id),
@@ -228,6 +235,7 @@ export const draftRouter = router({
             altText: m.altText ?? undefined,
           })),
           replyToPostId: draft.replyToPostId ?? undefined,
+          interestSlug: draft.interestSlug ?? undefined,
         });
         for (const statement of statements) {
           await statement;

@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { post } from './post';
 import { user } from './auth';
+import { interest } from './interest';
 
 import { pgTable, text, timestamp, integer, index } from 'drizzle-orm/pg-core';
 
@@ -22,6 +23,11 @@ export const postDraft = pgTable(
     content: text('content').notNull().default(''),
     replyToPostId: text('reply_to_post_id').references(() => post.id, {
       onDelete: 'cascade',
+    }),
+    // Unlike replyToPostId, editable on the draft — a topic tag is content,
+    // not a structural relation set once at creation.
+    interestSlug: text('interest_slug').references(() => interest.slug, {
+      onDelete: 'set null',
     }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')

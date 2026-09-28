@@ -132,6 +132,13 @@
     @apply font-sans;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+    /* Browser scroll anchoring silently adjusts scrollY to compensate for
+       layout shifts near the viewport. That fights any scroll-position-driven
+       UI (e.g. the home feed's collapsing header) — a shift it "corrects"
+       fires another scroll event, which re-triggers the same UI change,
+       which shifts layout again: an infinite oscillation loop. Disabled
+       site-wide since nothing here depends on the browser's compensation. */
+    overflow-anchor: none;
   }
 
   ::-webkit-scrollbar {

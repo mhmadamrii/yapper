@@ -61,7 +61,7 @@ export function SignUpForm() {
           onSuccess: async () => {
             await refreshSession();
             navigate({
-              to: '/',
+              to: '/onboarding',
             });
             toast.success('Sign up successful');
           },

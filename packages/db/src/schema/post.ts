@@ -1,6 +1,7 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { user } from './auth';
 import { linkPreview } from './link-preview';
+import { interest } from './interest';
 
 import {
   pgTable,
@@ -8,8 +9,16 @@ import {
   timestamp,
   integer,
   index,
+  customType,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+
+// Drizzle has no built-in tsvector column type.
+const tsVector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector';
+  },
+});
 
 export const post = pgTable(
   'post',
@@ -40,6 +49,11 @@ export const post = pgTable(
     linkPreviewUrl: text('link_preview_url').references(() => linkPreview.url, {
       onDelete: 'set null',
     }),
+    // Optional single topic tag, picked in the composer. `set null` rather
+    // than cascade — losing the topic label shouldn't delete the post.
+    interestSlug: text('interest_slug').references(() => interest.slug, {
+      onDelete: 'set null',
+    }),
     // Denormalized engagement counters — updated with atomic increments
     // alongside like/repost/reply writes, never recomputed via COUNT(*).
     // repostCount covers both a plain repost and a quote post, same as
@@ -52,6 +66,13 @@ export const post = pgTable(
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
+    // Postgres-native full-text search over post content — generated and
+    // stored so search never re-runs `to_tsvector` at query time. Raw column
+    // name in the expression (not `post.content`) because `post` isn't bound
+    // yet while its own table is being defined.
+    searchVector: tsVector('search_vector').generatedAlwaysAs(
+      () => sql`to_tsvector('english', "content")`,
+    ),
   },
   (table) => [
     // Keyset pagination: cursor is (createdAt, id), always paged DESC.
@@ -63,6 +84,8 @@ export const post = pgTable(
     ),
     index('post_replyTo_idx').on(table.replyToPostId),
     index('post_quotedPost_idx').on(table.quotedPostId),
+    index('post_interest_idx').on(table.interestSlug),
+    index('post_search_vector_idx').using('gin', table.searchVector),
   ],
 );
 
@@ -115,6 +138,10 @@ export const postRelations = relations(post, ({ one, many }) => ({
   linkPreview: one(linkPreview, {
     fields: [post.linkPreviewUrl],
     references: [linkPreview.url],
+  }),
+  interest: one(interest, {
+    fields: [post.interestSlug],
+    references: [interest.slug],
   }),
 }));
 

@@ -59,6 +59,7 @@ export function buildPostInsertStatements(
     // Must already exist in `link_preview` — the FK is enforced, and the
     // caller is expected to have gone through `getOrCreateLinkPreview`.
     linkPreviewUrl?: string;
+    interestSlug?: string;
   },
 ) {
   const insertPost = db.insert(post).values({
@@ -68,6 +69,7 @@ export function buildPostInsertStatements(
     replyToPostId: args.replyToPostId,
     quotedPostId: args.quotedPostId,
     linkPreviewUrl: args.linkPreviewUrl,
+    interestSlug: args.interestSlug,
   });
 
   const extras = [];
@@ -374,6 +376,67 @@ export const postRouter = router({
       return { items, nextCursor };
     }),
 
+  // Full-text search over post content. `websearch_to_tsquery` (not
+  // `plainto_tsquery`) parses `"exact phrase"`, `-exclude`, and `OR` the way
+  // people actually type into a search box. Ranked by `ts_rank` against the
+  // generated `search_vector` column (GIN-indexed — see the schema), same
+  // two-phase rank-then-hydrate shape as `list` above.
+  search: publicProcedure
+    .input(
+      z.object({
+        query: z.string().trim().min(1).max(100),
+        limit: z.number().int().min(1).max(50).default(20),
+        cursor: z.object({ rank: z.number(), id: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const cursor = input.cursor;
+      const { feedExcluded } = await getViewerExclusions(
+        db,
+        ctx.session?.user.id,
+      );
+
+      const tsQuery = sql`websearch_to_tsquery('english', ${input.query})`;
+      const rank = sql<number>`ts_rank(${post.searchVector}, ${tsQuery})`;
+
+      const rankedRows = await db
+        .select({ id: post.id, rank })
+        .from(post)
+        .where(
+          and(
+            sql`${post.searchVector} @@ ${tsQuery}`,
+            isNull(post.replyToPostId),
+            feedExcluded.size > 0
+              ? notInArray(post.authorId, [...feedExcluded])
+              : undefined,
+            cursor
+              ? or(
+                  sql`${rank} < ${cursor.rank}`,
+                  and(sql`${rank} = ${cursor.rank}`, lt(post.id, cursor.id)),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(sql`${rank} desc`, desc(post.id))
+        .limit(input.limit + 1);
+
+      let nextCursor: { rank: number; id: string } | null = null;
+      if (rankedRows.length > input.limit) {
+        rankedRows.pop();
+        const last = rankedRows[rankedRows.length - 1]!;
+        nextCursor = { rank: last.rank, id: last.id };
+      }
+
+      const items = await hydratePosts(
+        db,
+        rankedRows.map((row) => row.id),
+        ctx.session?.user.id,
+      );
+
+      return { items, nextCursor };
+    }),
+
   // Following tab: reverse-chronological, fan-out-on-read from the `follow`
   // table (its PK is (followerId, followeeId), covering exactly this query).
   // Fan-out-on-write (precomputed per-follower timelines) would pay off at
@@ -545,6 +608,7 @@ export const postRouter = router({
         // re-derived server-side so a client can't publish a card that
         // misrepresents where the link goes.
         linkUrl: z.string().max(2048).optional(),
+        interestSlug: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -615,6 +679,7 @@ export const postRouter = router({
           replyToPostId: input.replyToPostId,
           quotedPostId: input.quotedPostId,
           linkPreviewUrl,
+          interestSlug: input.interestSlug,
         });
         for (const statement of statements) {
           await statement;

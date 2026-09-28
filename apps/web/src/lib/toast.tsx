@@ -25,7 +25,7 @@ function ToastCard({
   action?: ToastAction;
 }) {
   return (
-    <div className="bg-popover text-popover-foreground border-border ring-foreground/10 flex w-[min(356px,100vw-2rem)] items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ring-1">
+    <div className="bg-popover text-popover-foreground border-border ring-foreground/10 flex w-[min(280px,100vw-2rem)] items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ring-1">
       <span className={`shrink-0 ${iconClassName}`}>{icon}</span>
       <span className="flex-1">{message}</span>
       {action && (

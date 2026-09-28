@@ -51,7 +51,7 @@ export const navItemsBeforeProfile = [
   { label: 'Explore', icon: Search, to: '/search' },
   { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Chat', icon: MessageCircle, to: '/messages' },
-  { label: 'Feeds', icon: Hash, to: '/' },
+  { label: 'Feeds', icon: Hash, to: '/feeds' },
   { label: 'Drafts', icon: List, to: '/drafts' },
   { label: 'Saved', icon: Bookmark, to: '/saved' },
 ] as const;

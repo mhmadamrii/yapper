@@ -5,6 +5,7 @@ import { appRouter } from '@yapper/api/routers/index';
 import { createAuth } from '@yapper/auth';
 import { createDb } from '@yapper/db';
 import { conversationParticipant } from '@yapper/db/schema/message';
+import { ensureInterestsSeeded } from '@yapper/db/seed/interests';
 import { env } from '@yapper/env/server';
 import { and, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -84,6 +85,10 @@ app.get('/conversations/:id/stream', async (c) => {
 
   return subscribeToConversation(conversationId, c.req.raw.signal);
 });
+
+// Idempotent upsert of the fixed interest catalog — cheap (~24 rows), so
+// it's safe to run on every boot instead of a separate deploy/migration step.
+await ensureInterestsSeeded(createDb());
 
 Bun.serve({
   port: env.PORT,

@@ -71,6 +71,20 @@
       "when": 1786593012192,
       "tag": "0009_faithful_eternals",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790583885777,
+      "tag": "0010_concerned_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790585855753,
+      "tag": "0011_perfect_azazel",
+      "breakpoints": true
     }
   ]
 }

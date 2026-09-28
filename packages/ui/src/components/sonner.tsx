@@ -31,6 +31,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
           '--normal-text': 'var(--popover-foreground)',
           '--normal-border': 'var(--border)',
           '--border-radius': 'var(--radius)',
+          // Sonner's own CSS has no fallback for this
+          // (`[data-sonner-toaster] { width: var(--width) }`) — omitting it
+          // resolves to `auto` and the toast stretches to fill its
+          // container instead of sitting at a fixed width.
+          '--width': '320px',
         } as React.CSSProperties
       }
       toastOptions={{
