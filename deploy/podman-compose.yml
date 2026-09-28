@@ -46,10 +46,11 @@ services:
       # imgproxy also honors a generic PORT var and would silently bind
       # there instead of its own default — pin it explicitly.
       IMGPROXY_BIND: ':8080'
-      # Unsigned /insecure/ URLs — same trust model as ImageKit's own /tr:
-      # URLs (public convenience transforms, no per-request signing).
+      # No IMGPROXY_KEY/IMGPROXY_SALT here on purpose — imgproxy only
+      # requires a valid signature when those are configured. Unsigned
+      # /unsafe/ URLs are the same trust model ImageKit's own /tr: URLs
+      # had (public convenience transforms, no per-request signing).
       # IMGPROXY_ALLOWED_SOURCES scopes what it'll fetch to our own bucket.
-      IMGPROXY_ALLOW_INSECURE: 'true'
       IMGPROXY_ALLOWED_SOURCES: 's3://yapper-media/'
     networks:
       - kommers_net

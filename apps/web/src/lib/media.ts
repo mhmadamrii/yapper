@@ -16,9 +16,10 @@ export interface MediaTransformOptions {
   quality?: number;
 }
 
-// Unsigned imgproxy URL — same trust model ImageKit's own /tr: URLs had
-// (public convenience transforms, no per-request signing). imgproxy is
-// restricted (IMGPROXY_ALLOWED_SOURCES) to only fetch from our own bucket.
+// Unsigned imgproxy URL (the /unsafe/ prefix) — same trust model ImageKit's
+// own /tr: URLs had (public convenience transforms, no per-request signing).
+// imgproxy is restricted (IMGPROXY_ALLOWED_SOURCES) to only fetch from our
+// own bucket.
 export function mediaUrl(objectKey: string, opts: MediaTransformOptions = {}) {
   const segments = [
     opts.width !== undefined ? `w:${opts.width}` : null,
@@ -30,7 +31,7 @@ export function mediaUrl(objectKey: string, opts: MediaTransformOptions = {}) {
     `q:${opts.quality ?? 80}`,
   ].filter((segment): segment is string => segment !== null);
 
-  return `${env.VITE_MEDIA_URL_ENDPOINT}/insecure/${segments.join('/')}/plain/s3://${env.VITE_MEDIA_S3_BUCKET}/${objectKey}`;
+  return `${env.VITE_MEDIA_URL_ENDPOINT}/unsafe/${segments.join('/')}/plain/s3://${env.VITE_MEDIA_S3_BUCKET}/${objectKey}`;
 }
 
 // MinIO doesn't inspect uploads the way ImageKit's API did, so we read
