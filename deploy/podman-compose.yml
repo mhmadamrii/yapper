@@ -42,6 +42,10 @@ services:
       IMGPROXY_S3_REGION: us-east-1
       # MinIO speaks path-style, not virtual-hosted-style, buckets.
       AWS_S3_FORCE_PATH_STYLE: 'true'
+      # The shared env file sets PORT=3000 for yapper-server's Hono app;
+      # imgproxy also honors a generic PORT var and would silently bind
+      # there instead of its own default — pin it explicitly.
+      IMGPROXY_BIND: ':8080'
     networks:
       - kommers_net
 
