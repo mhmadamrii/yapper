@@ -4,7 +4,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 import { useState, type MouseEvent } from 'react';
 import { Show, For } from '@/components/control-flow';
 import { cn } from '@yapper/ui/lib/utils';
-import { imageKitUrl } from '@/lib/imagekit';
+import { mediaUrl } from '@/lib/media';
 import { MentionText } from '@/components/mention-text';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
@@ -170,7 +170,7 @@ export function PostCard({
                 {(m) => (
                   <img
                     key={m.id}
-                    src={imageKitUrl(m.filePath, 'w-1200,f-auto,q-auto')}
+                    src={mediaUrl(m.filePath, { width: 1200 })}
                     alt={m.altText ?? ''}
                     width={m.width}
                     height={m.height}

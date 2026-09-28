@@ -10,7 +10,7 @@ import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { useSession } from '@/hooks/use-session';
-import { imageKitUrl } from '@/lib/imagekit';
+import { mediaUrl } from '@/lib/media';
 import { seo } from '@/lib/seo';
 import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
 import { useSetFollow } from '@/lib/use-set-follow';
@@ -263,7 +263,7 @@ function PostDetail({ post }: { post: PostById }) {
             {(m) => (
               <img
                 key={m.id}
-                src={imageKitUrl(m.filePath, 'w-1200,f-auto,q-auto')}
+                src={mediaUrl(m.filePath, { width: 1200 })}
                 alt={m.altText ?? ''}
                 width={m.width}
                 height={m.height}

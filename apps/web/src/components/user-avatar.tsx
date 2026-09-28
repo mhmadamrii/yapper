@@ -1,3 +1,4 @@
+import { mediaUrl } from '@/lib/media';
 import { cn } from '@yapper/ui/lib/utils';
 
 // Deterministic hash so a user's fallback gradient is stable across
@@ -27,7 +28,7 @@ export function UserAvatar({
   if (image) {
     return (
       <img
-        src={image}
+        src={mediaUrl(image, { width: 400, height: 400, gravity: 'ce' })}
         alt={name}
         className={cn('rounded-full object-cover', className)}
       />

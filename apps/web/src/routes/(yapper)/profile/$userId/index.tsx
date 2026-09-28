@@ -9,7 +9,7 @@ import { PostCard } from '@/components/home/post-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { useSession } from '@/hooks/use-session';
-import { imageKitUrl } from '@/lib/imagekit';
+import { mediaUrl } from '@/lib/media';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { DialogEditProfile } from '@/routes/(yapper)/-components/dialog-edit-profile';
 import { seo } from '@/lib/seo';
@@ -108,10 +108,11 @@ function ProfilePage() {
               >
                 {(bannerPath) => (
                   <img
-                    src={imageKitUrl(
-                      bannerPath,
-                      'w-1200,h-400,fo-auto,f-auto,q-auto',
-                    )}
+                    src={mediaUrl(bannerPath, {
+                      width: 1200,
+                      height: 400,
+                      gravity: 'sm',
+                    })}
                     alt=""
                     className="h-36 w-full object-cover"
                   />

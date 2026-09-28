@@ -1,5 +1,5 @@
 import { authClient } from '@/lib/auth-client';
-import { imageKitUrl, uploadToImageKit } from '@/lib/imagekit';
+import { mediaUrl, uploadToStorage } from '@/lib/media';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
@@ -81,7 +81,7 @@ export function DialogEditProfile({
 
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const uploadAuth = useMutation(trpc.media.uploadAuth.mutationOptions());
+  const uploadUrl = useMutation(trpc.media.uploadUrl.mutationOptions());
   const updateProfile = useMutation(trpc.user.updateProfile.mutationOptions());
 
   const canSave =
@@ -95,9 +95,11 @@ export function DialogEditProfile({
   };
 
   const upload = async (file: File) => {
-    // Each ImageKit auth token is single-use — one per file.
-    const auth = await uploadAuth.mutateAsync();
-    return uploadToImageKit(file, auth);
+    const { uploadUrl: url, objectKey } = await uploadUrl.mutateAsync({
+      contentType: file.type,
+      size: file.size,
+    });
+    return uploadToStorage(file, url, objectKey);
   };
 
   const handleSave = async () => {
@@ -106,13 +108,15 @@ export function DialogEditProfile({
       let image: string | undefined;
       if (avatar.pending) {
         const result = await upload(avatar.pending.file);
-        image = imageKitUrl(result.filePath, 'w-400,h-400,f-auto,q-auto');
+        // Bare object key, resolved via mediaUrl() at render time — same
+        // as bannerPath, rather than baking a transformed URL in here.
+        image = result.objectKey;
       }
 
       let bannerPath: string | undefined;
       if (banner.pending) {
         const result = await upload(banner.pending.file);
-        bannerPath = result.filePath;
+        bannerPath = result.objectKey;
       }
 
       await updateProfile.mutateAsync({ bio: bio.trim(), bannerPath });
@@ -192,7 +196,11 @@ export function DialogEditProfile({
                 src={
                   banner.pending
                     ? src
-                    : imageKitUrl(src, 'w-1200,h-400,fo-auto,f-auto,q-auto')
+                    : mediaUrl(src, {
+                        width: 1200,
+                        height: 400,
+                        gravity: 'sm',
+                      })
                 }
                 alt="Banner"
                 className="h-36 w-full object-cover"

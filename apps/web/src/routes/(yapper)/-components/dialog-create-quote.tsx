@@ -1,7 +1,7 @@
 import { useSession } from '@/hooks/use-session';
 import { CharProgress, type DraftMediaItem } from './dialog-create-post';
 import { Dialog, DialogContent } from '@yapper/ui/components/dialog';
-import { uploadToImageKit } from '@/lib/imagekit';
+import { uploadToStorage } from '@/lib/media';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
@@ -46,7 +46,7 @@ export function DialogCreateQuote({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const uploadAuth = useMutation(trpc.media.uploadAuth.mutationOptions());
+  const uploadUrl = useMutation(trpc.media.uploadUrl.mutationOptions());
   const createQuote = useMutation(trpc.post.create.mutationOptions());
 
   const remaining = MAX_POST_LENGTH - text.length;
@@ -92,17 +92,17 @@ export function DialogCreateQuote({
   const uploadPendingImages = async () => {
     const uploaded: DraftMediaItem[] = [];
     for (const { file } of images) {
-      // Each ImageKit auth token is single-use — one per file.
-      const auth = await uploadAuth.mutateAsync();
-      const result = await uploadToImageKit(file, auth);
+      const { uploadUrl: url, objectKey } = await uploadUrl.mutateAsync({
+        contentType: file.type,
+        size: file.size,
+      });
+      const result = await uploadToStorage(file, url, objectKey);
       uploaded.push({
-        fileId: result.fileId,
-        filePath: result.filePath,
+        fileId: result.objectKey,
+        filePath: result.objectKey,
         width: result.width,
         height: result.height,
-        format:
-          result.name.split('.').pop()?.toLowerCase() ??
-          file.type.replace('image/', ''),
+        format: result.format,
         bytes: result.size,
       });
     }

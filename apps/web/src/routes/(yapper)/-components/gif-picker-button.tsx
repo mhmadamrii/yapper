@@ -11,7 +11,7 @@ import { Show } from '@/components/control-flow';
 /**
  * Klipy GIF picker for the composers. A picked GIF is downloaded into a
  * `File` and handed to `onPick`, so it flows through the exact same
- * pending-image -> ImageKit upload pipeline as a picked photo.
+ * pending-image -> storage upload pipeline as a picked photo.
  */
 export function GifPickerButton({
   disabled,

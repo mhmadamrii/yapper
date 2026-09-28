@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { imageKitUrl } from '@/lib/imagekit';
+import { mediaUrl } from '@/lib/media';
 import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
@@ -139,7 +139,7 @@ function DraftsPage() {
                       {(m) => (
                         <img
                           key={m.id}
-                          src={imageKitUrl(m.filePath, 'w-200,f-auto,q-auto')}
+                          src={mediaUrl(m.filePath, { width: 200 })}
                           alt={m.altText ?? ''}
                           className="border-border size-20 rounded-lg border object-cover"
                         />

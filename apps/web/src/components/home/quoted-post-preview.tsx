@@ -1,4 +1,4 @@
-import { imageKitUrl } from '@/lib/imagekit';
+import { mediaUrl } from '@/lib/media';
 import { UserAvatar } from '@/components/user-avatar';
 import { MentionText } from '@/components/mention-text';
 import { Show } from '@/components/control-flow';
@@ -67,7 +67,7 @@ export function QuotedPostPreview({
       <Show when={post.media[0]}>
         {(m) => (
           <img
-            src={imageKitUrl(m.filePath, 'w-800,f-auto,q-auto')}
+            src={mediaUrl(m.filePath, { width: 800 })}
             alt={m.altText ?? ''}
             className="border-border mt-2 max-h-72 w-full rounded-xl border object-cover"
           />
