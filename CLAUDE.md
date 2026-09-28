@@ -25,13 +25,12 @@ pnpm workspaces + Turborepo. Dependency versions are pinned in the `catalog:` se
 | Path              | Package          | What it is                                                                                                      |
 | ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------- |
 | `apps/web`        | `web`            | TanStack Start (React 19, Vite 8, file-based routing), port 3001, deploys to Vercel                             |
-| `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys to Cloudflare Workers                                    |
+| `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys via podman-compose to a self-hosted VPS                  |
 | `packages/api`    | `@yapper/api`    | tRPC init, context, and routers (`src/routers/`)                                                                |
 | `packages/auth`   | `@yapper/auth`   | better-auth setup (`createAuth()`)                                                                              |
 | `packages/db`     | `@yapper/db`     | Drizzle ORM + Neon serverless Postgres; schema in `src/schema/`, `createDb()` factory                           |
 | `packages/env`    | `@yapper/env`    | t3-env validated env vars — import from `@yapper/env/server` or `@yapper/env/web`, never `process.env` directly |
 | `packages/ui`     | `@yapper/ui`     | Shared shadcn/base-ui components, Tailwind 4, `globals.css`                                                     |
-| `packages/infra`  | `@yapper/infra`  | Alchemy IaC for the Cloudflare side                                                                             |
 | `packages/config` | `@yapper/config` | Shared tsconfig                                                                                                 |
 
 ## Commands (run from repo root)
@@ -50,7 +49,7 @@ pnpm db:migrate
 pnpm db:studio
 
 pnpm deploy:web:prod # Vercel prod deploy
-pnpm deploy:server   # Alchemy deploy to Cloudflare
+pnpm deploy:server   # ssh + podman-compose deploy to the self-hosted VPS
 ```
 
 ## Conventions

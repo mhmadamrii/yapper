@@ -9,7 +9,6 @@ out/
 .output/
 .vercel/
 .turbo/
-.wrangler/
 
 # Generated files
 **/routeTree.gen.ts

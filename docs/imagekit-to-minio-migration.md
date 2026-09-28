@@ -56,7 +56,7 @@ Each step is tagged **[YOU]** (needs VPS SSH access, an external dashboard, or a
 - **[ME]** Remove `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `VITE_IMAGEKIT_URL_ENDPOINT` from `packages/env/src/*.ts`, `.env.example` files, and add `VITE_MEDIA_URL_ENDPOINT` (`https://media.yappers.online`) plus server-only imgproxy signing key/salt and MinIO bucket creds.
 - **[YOU]** Update the actual secret values in `apps/server/.env` / `apps/server/.env.production` / `apps/web/.env.production` (I can point you at exactly which keys go where, but the real secret values should come from you, not be echoed through me).
 - **[ME]** Sync the non-secret prod web vars via `pnpm env:production` (uses `apps/web/.env.production`, already fixed to target the right file).
-- **[YOU]** Delete the old Cloudflare `alchemy.run.ts` ImageKit bindings if that Workers path is fully dead (confirm first — don't want to break something still relying on it).
+- **[DONE]** `packages/infra` (the Cloudflare/Alchemy IaC, including `alchemy.run.ts`'s ImageKit bindings) has been fully removed — confirmed dead, project is fully on the self-hosted VPS now.
 - **[YOU]** Once everything's verified working, cancel/delete the ImageKit account.
 
 ### 8. Rollout order (learned from today's session — verify each layer before moving on)

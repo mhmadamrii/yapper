@@ -39,12 +39,6 @@ export function createAuth() {
         secure: true,
         httpOnly: true,
       },
-      // uncomment crossSubDomainCookies setting when ready to deploy and replace <your-workers-subdomain> with your actual workers subdomain
-      // https://developers.cloudflare.com/workers/wrangler/configuration/#workersdev
-      // crossSubDomainCookies: {
-      //   enabled: true,
-      //   domain: "<your-workers-subdomain>",
-      // },
     },
   });
 }

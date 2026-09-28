@@ -18,7 +18,6 @@
     "db:generate": "turbo run db:generate -F @yapper/db",
     "db:migrate": "turbo run db:migrate -F @yapper/db",
     "deploy:server": "ssh <vps-host> 'cd /opt/yapper && git pull && podman-compose -f deploy/podman-compose.yml run --rm yapper-migrate && podman-compose -f deploy/podman-compose.yml up -d --build server'",
-    "destroy": "turbo run destroy -F @yapper/infra",
     "deploy:setup": "vercel link",
     "dev:vercel": "vercel dev -L",
     "env:preview": "tsx scripts/sync-vercel-env.ts preview",
@@ -33,7 +32,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
     "@types/node": "catalog:",
     "@yapper/config": "workspace:*",
     "prettier": "^3.9.5",

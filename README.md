@@ -32,13 +32,12 @@ Not another CRUD clone — each feature replicates a **hard problem** big platfo
 | Path              | Package          | What it is                                                                                                      |
 | ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------- |
 | `apps/web`        | `web`            | TanStack Start (React 19, Vite 8, file-based routing), port 3001, deploys to Vercel                             |
-| `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys to Cloudflare Workers                                    |
+| `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys via podman-compose to a self-hosted VPS                  |
 | `packages/api`    | `@yapper/api`    | tRPC init, context, and routers (`src/routers/`)                                                                |
 | `packages/auth`   | `@yapper/auth`   | better-auth setup (`createAuth()`)                                                                              |
 | `packages/db`     | `@yapper/db`     | Drizzle ORM + Neon serverless Postgres; schema in `src/schema/`, `createDb()` factory                           |
 | `packages/env`    | `@yapper/env`    | t3-env validated env vars — import from `@yapper/env/server` or `@yapper/env/web`, never `process.env` directly |
 | `packages/ui`     | `@yapper/ui`     | Shared shadcn/base-ui components, Tailwind 4, `globals.css`                                                     |
-| `packages/infra`  | `@yapper/infra`  | Alchemy IaC for the Cloudflare side                                                                             |
 | `packages/config` | `@yapper/config` | Shared tsconfig                                                                                                 |
 
 Dependency versions are pinned in the `catalog:` section of `pnpm-workspace.yaml` — add shared deps there, reference with `"catalog:"`.
@@ -86,7 +85,7 @@ pnpm db:migrate
 pnpm db:studio
 
 pnpm deploy:web:prod # Vercel prod deploy
-pnpm deploy:server   # Alchemy deploy to Cloudflare
+pnpm deploy:server   # ssh + podman-compose deploy to the self-hosted VPS
 ```
 
 ## Conventions
@@ -124,13 +123,10 @@ App-specific blocks (not shared): run the shadcn CLI from `apps/web` instead.
 
 ## Deployment
 
-### Server → Cloudflare via Alchemy
+### Server → self-hosted VPS via podman-compose
 
 - Dev: `pnpm dev:server`
-- Deploy: `pnpm deploy:server`
-- Destroy: `pnpm destroy`
-
-Guide: [Deploying to Cloudflare with Alchemy](https://www.better-t-stack.dev/docs/guides/cloudflare-alchemy)
+- Deploy: `pnpm deploy:server` — sshes into the VPS, pulls, runs pending DB migrations, rebuilds and restarts the server container (see `deploy/podman-compose.yml`)
 
 ### Web → Vercel
 
@@ -160,7 +156,6 @@ yapper/
 │   ├── auth/        # Authentication configuration & logic
 │   ├── db/          # Database schema & queries
 │   ├── env/         # Validated env vars
-│   ├── infra/       # Alchemy IaC (Cloudflare)
 │   └── config/      # Shared tsconfig
 ```
 
