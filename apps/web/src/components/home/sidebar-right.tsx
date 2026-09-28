@@ -20,16 +20,16 @@ export function SidebarRight() {
   const trendingQuery = useQuery(
     trpc.trending.list.queryOptions(
       { limit: 5 },
-      // The cron recomputes every 5 minutes — polling faster than that would
-      // only ever refetch the same snapshot.
+      // Nothing recomputes this in the background — the snapshot only
+      // changes when someone hits the refresh button below. Poll anyway so
+      // one user's refresh shows up for everyone else without a reload.
       { refetchInterval: 5 * 60 * 1000, staleTime: 60 * 1000 },
     ),
   );
   const trending = trendingQuery.data;
 
-  // Dev/testing only: the real trigger is the Worker's 5-min Cloudflare
-  // Cron, which never fires in local dev. This lets the snapshot be forced
-  // without waiting for a deploy.
+  // The only way the trending snapshot ever gets recomputed — there is no
+  // automatic scheduler. See `packages/api/src/lib/trending.ts`.
   const recompute = useMutation(
     trpc.trending.recompute.mutationOptions({
       onSuccess: () => {
@@ -77,8 +77,8 @@ export function SidebarRight() {
               <button
                 onClick={() => recompute.mutate()}
                 disabled={recompute.isPending}
-                aria-label="Recompute trending now"
-                title="Dev: recompute trending now (cron doesn't run in local dev)"
+                aria-label="Refresh trending"
+                title="Refresh trending"
                 className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-full p-1 transition-colors disabled:opacity-50"
               >
                 <RefreshCw

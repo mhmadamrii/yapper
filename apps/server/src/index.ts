@@ -1,7 +1,6 @@
 import { trpcServer } from '@hono/trpc-server';
 import { createContext } from '@yapper/api/context';
 import { subscribeToConversation } from '@yapper/api/lib/conversation-hub';
-import { computeTrending } from '@yapper/api/lib/trending';
 import { appRouter } from '@yapper/api/routers/index';
 import { createAuth } from '@yapper/auth';
 import { createDb } from '@yapper/db';
@@ -16,8 +15,10 @@ import { authRateLimit } from './middleware/rate-limit';
 
 const app = new Hono();
 
-// Diagnostic-only request timing for the Neon latency investigation. Flip to
-// false once the root cause (cold start vs. slow query vs. N+1) is confirmed.
+// Diagnostic-only request timing, added for the 2026-08-19 latency
+// investigation (root-caused to Neon cold starts — since moot, the server
+// now runs on a self-hosted VPS with a long-lived connection). Left in as
+// general request-timing instrumentation; flip to false when no longer needed.
 const REQUEST_TIMING_ENABLED = true;
 
 if (REQUEST_TIMING_ENABLED) {
@@ -83,27 +84,6 @@ app.get('/conversations/:id/stream', async (c) => {
 
   return subscribeToConversation(conversationId, c.req.raw.signal);
 });
-
-// Recomputes the trending snapshot every 5 min, replacing the Cloudflare
-// Cron Trigger that used to drive this. `isRunning` guards against overlap
-// if a tick ever takes longer than the interval.
-let isRunning = false;
-setInterval(
-  () => {
-    if (isRunning) return;
-    isRunning = true;
-    computeTrending()
-      .catch((error) => {
-        // A failed tick is survivable: the previous snapshot stays served
-        // until the next run.
-        console.error('[cron] trending compute failed', error);
-      })
-      .finally(() => {
-        isRunning = false;
-      });
-  },
-  5 * 60 * 1000,
-);
 
 Bun.serve({
   port: env.PORT,

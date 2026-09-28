@@ -22,7 +22,7 @@ Not another CRUD clone — each feature replicates a **hard problem** big platfo
 - **TanStack Start** — SSR framework with TanStack Router (React 19, Vite 8)
 - **Hono** — server framework, tRPC + better-auth handlers
 - **tRPC** — end-to-end type-safe APIs
-- **Drizzle ORM** + **PostgreSQL** (Neon serverless)
+- **Drizzle ORM** + **PostgreSQL** (self-hosted, VPS container)
 - **better-auth** — authentication
 - **TailwindCSS** + shared shadcn/ui primitives
 - **pnpm workspaces + Turborepo** — monorepo
@@ -35,7 +35,7 @@ Not another CRUD clone — each feature replicates a **hard problem** big platfo
 | `apps/server`     | `server`         | Hono app exposing tRPC + better-auth handlers, deploys via podman-compose to a self-hosted VPS                  |
 | `packages/api`    | `@yapper/api`    | tRPC init, context, and routers (`src/routers/`)                                                                |
 | `packages/auth`   | `@yapper/auth`   | better-auth setup (`createAuth()`)                                                                              |
-| `packages/db`     | `@yapper/db`     | Drizzle ORM + Neon serverless Postgres; schema in `src/schema/`, `createDb()` factory                           |
+| `packages/db`     | `@yapper/db`     | Drizzle ORM + Postgres (self-hosted, VPS container); schema in `src/schema/`, `createDb()` factory              |
 | `packages/env`    | `@yapper/env`    | t3-env validated env vars — import from `@yapper/env/server` or `@yapper/env/web`, never `process.env` directly |
 | `packages/ui`     | `@yapper/ui`     | Shared shadcn/base-ui components, Tailwind 4, `globals.css`                                                     |
 | `packages/config` | `@yapper/config` | Shared tsconfig                                                                                                 |
@@ -50,9 +50,9 @@ pnpm install
 
 ### Database setup
 
-Project uses PostgreSQL (Neon) with Drizzle ORM.
+Project uses self-hosted PostgreSQL (VPS container, via podman-compose) with Drizzle ORM.
 
-1. Set up a PostgreSQL database.
+1. Set up a PostgreSQL database (production reuses the Postgres container from an existing external stack on the VPS, joined via `deploy/podman-compose.yml`; any local Postgres works for dev).
 2. Update `apps/server/.env` with your connection details.
 3. Push schema:
 
@@ -91,7 +91,7 @@ pnpm deploy:server   # ssh + podman-compose deploy to the self-hosted VPS
 ## Conventions
 
 - **tRPC** — add routers under `packages/api/src/routers/`, merge into `appRouter` in `routers/index.ts`. Use `publicProcedure` / `protectedProcedure` from `packages/api/src/index.ts`; `protectedProcedure` guarantees `ctx.session`.
-- **DB** — one schema file per domain in `packages/db/src/schema/`, re-exported from `schema/index.ts`. Get a client via `createDb()` (per-request, Neon HTTP driver — no long-lived pool).
+- **DB** — one schema file per domain in `packages/db/src/schema/`, re-exported from `schema/index.ts`. Get a client via `createDb()` — `postgres-js` driver with a module-scope singleton connection (long-lived VPS container process, opened once and reused, not per-request).
 - **Web routes** — file-based under `apps/web/src/routes/`. `routeTree.gen.ts` is generated — never edit by hand. Authed routes live under `routes/_auth/`.
 - **Data fetching (web)** — tRPC client via `apps/web/src/utils/trpc.ts` + TanStack Query.
 - **Conditional rendering (web)** — use SolidJS-style components from `apps/web/src/components/control-flow.tsx`: `<Show when={...}>`, `<Switch>`/`<Match>`, `<For each={...}>`. Prefer these over `&&`, nested ternaries, bare `.map()` in JSX.

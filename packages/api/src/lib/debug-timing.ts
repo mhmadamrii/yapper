@@ -1,7 +1,10 @@
 /**
- * Diagnostic-only timing logs for the Neon cold-start / latency investigation.
- * Flip TIMING_LOGS_ENABLED to false (or delete the call sites) once the root
- * cause is confirmed — this is not meant to stay on in steady state.
+ * Diagnostic-only timing logs, added for the 2026-08-19 API latency
+ * investigation (root-caused to Neon cold starts — since moot, the server
+ * now runs on a self-hosted VPS with a long-lived connection). Left in as
+ * general request-timing instrumentation. Flip TIMING_LOGS_ENABLED to false
+ * (or delete the call sites) once no longer needed — not meant to stay on
+ * in steady state.
  */
 export const TIMING_LOGS_ENABLED = true;
 

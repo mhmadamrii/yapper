@@ -13,7 +13,7 @@ export const trendingRouter = router({
   /**
    * The sidebar list. Reads the precomputed snapshot — a ~10-row table with
    * a PK order — so this costs the same whether the app has 100 posts or
-   * 100 million. All the ranking work happened in the 5-minute cron.
+   * 100 million. All the ranking work happened whenever `recompute` last ran.
    *
    * Tags come back bare and lowercase (`mariners`). Whether the UI renders
    * '#mariners' or 'Mariners' is a display decision, deliberately not baked
@@ -114,10 +114,8 @@ export const trendingRouter = router({
     }),
 
   /**
-   * Manual recompute trigger. The real trigger is the Worker's `scheduled`
-   * handler on a 5-min Cloudflare Cron (see `apps/server/src/index.ts`),
-   * which never fires in local dev — this lets the snapshot be rebuilt
-   * on demand instead of waiting for a deploy.
+   * Recompute trigger. This is the only trigger — no scheduler runs
+   * `computeTrending` automatically. Wired to the sidebar's refresh button.
    */
   recompute: protectedProcedure.mutation(() => computeTrending()),
 });

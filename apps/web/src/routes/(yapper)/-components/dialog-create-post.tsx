@@ -125,23 +125,23 @@ export function DialogCreatePost({
   };
 
   const uploadPendingImages = async () => {
-    const uploaded: DraftMediaItem[] = [];
-    for (const { file } of images) {
-      const { uploadUrl: url, objectKey } = await uploadUrl.mutateAsync({
-        contentType: file.type,
-        size: file.size,
-      });
-      const result = await uploadToStorage(file, url, objectKey);
-      uploaded.push({
-        fileId: result.objectKey,
-        filePath: result.objectKey,
-        width: result.width,
-        height: result.height,
-        format: result.format,
-        bytes: result.size,
-      });
-    }
-    return uploaded;
+    return Promise.all(
+      images.map(async ({ file }) => {
+        const { uploadUrl: url, objectKey } = await uploadUrl.mutateAsync({
+          contentType: file.type,
+          size: file.size,
+        });
+        const result = await uploadToStorage(file, url, objectKey);
+        return {
+          fileId: result.objectKey,
+          filePath: result.objectKey,
+          width: result.width,
+          height: result.height,
+          format: result.format,
+          bytes: result.size,
+        };
+      }),
+    );
   };
 
   const handlePost = async () => {
@@ -155,15 +155,21 @@ export function DialogCreatePost({
         // so what gets stored matches what the composer showed.
         linkUrl: media.length > 0 ? undefined : linkPreview.linkUrl,
       });
+
+      // Post exists now — that's the goal. Draft cleanup and cache
+      // invalidation are side effects, so they run in the background instead
+      // of blocking the success toast/close on them.
       if (initialDraft) {
-        // Best-effort: the post already exists at this point, so a failed
-        // cleanup just leaves a stale draft rather than losing the post.
-        await deleteDraft.mutateAsync({ id: initialDraft.id }).catch(() => {});
-        await queryClient.invalidateQueries({
-          queryKey: trpc.draft.list.queryKey(),
-        });
+        deleteDraft
+          .mutateAsync({ id: initialDraft.id })
+          .catch(() => {})
+          .finally(() =>
+            queryClient.invalidateQueries({
+              queryKey: trpc.draft.list.queryKey(),
+            }),
+          );
       }
-      await queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: trpc.post.list.infiniteQueryKey(),
       });
 

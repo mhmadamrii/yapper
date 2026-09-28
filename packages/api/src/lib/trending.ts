@@ -25,7 +25,7 @@ import { asc, lt, sql } from 'drizzle-orm';
 const MIN_RECENT_AUTHORS = 2;
 
 // Rows kept in the snapshot table. Read path serves the top 5; the extra
-// headroom means you can widen the UI without touching the cron.
+// headroom means you can widen the UI without touching this function.
 const TRENDING_LIMIT = 10;
 
 // Smoothing added to the denominator. Without it a brand-new tag has a
@@ -49,18 +49,19 @@ const MENTION_RETENTION_DAYS = 7;
 
 type ScoredRow = {
   hashtag: string;
-  // Neon's HTTP driver returns bigint/numeric as strings — these are NOT
+  // postgres-js returns bigint/numeric as strings — these are NOT
   // numbers until Number() is applied below.
   recent_authors: string;
   score: string;
 };
 
 /**
- * Recomputes the whole trending snapshot. Called from the Worker's
- * `scheduled` handler every 5 minutes.
+ * Recomputes the whole trending snapshot. On-demand only — triggered by the
+ * `trending.recompute` tRPC mutation (the sidebar's refresh button), no
+ * automatic scheduler runs this.
  *
  * One SQL statement does all the aggregation — the alternative (pull tags,
- * loop, count per tag) would be N+1 round-trips over HTTP from a Worker.
+ * loop, count per tag) would be N+1 round-trips.
  */
 export async function computeTrending(db = createDb()) {
   // `filter (where ...)` splits the two windows in a single pass over the
