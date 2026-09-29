@@ -32,12 +32,38 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1',
       },
+      {
+        name: 'theme-color',
+        content: '#0c0a09',
+      },
       ...seo({}),
     ],
     links: [
       {
         rel: 'stylesheet',
         href: appCss,
+      },
+      // Favicon set + manifest already existed on disk but weren't linked
+      // anywhere — browsers/OSes only ever saw the fallback below.
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/favicon-32x32.png',
+      },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '16x16',
+        href: '/favicon-16x16.png',
+      },
+      {
+        rel: 'apple-touch-icon',
+        href: '/apple-touch-icon.png',
+      },
+      {
+        rel: 'manifest',
+        href: '/site.webmanifest',
       },
       {
         rel: 'icon',
