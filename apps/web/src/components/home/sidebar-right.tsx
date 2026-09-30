@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Input } from '@yapper/ui/components/input';
 import {
   Compass,
@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { For, Show } from '@/components/control-flow';
 import { useSession } from '@/hooks/use-session';
 import { UserAvatar } from '@/components/user-avatar';
+import { cn } from '@yapper/ui/lib/utils';
 import { useTRPC } from '@/utils/trpc';
 
 export function SidebarRight() {
@@ -44,27 +45,12 @@ export function SidebarRight() {
   );
 
   return (
-    <aside className="sticky top-0 hidden h-svh w-80 flex-col gap-5 px-6 py-6 lg:flex">
+    <aside className="sticky top-0 hidden h-svh w-80 flex-col gap-5 px-6 py-6 lg:flex xl:w-full">
       <Show when={session} fallback={<SearchDisabled />}>
         <SidebarPeopleSearch />
       </Show>
 
-      {session && (
-        <div className="flex flex-col items-start gap-1">
-          <button className="hover:bg-accent flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors">
-            <Compass className="text-primary size-4" />
-            Discover
-          </button>
-          <button className="bg-primary text-primary-foreground flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium">
-            <ListFilter className="size-4" />
-            Following
-          </button>
-          <button className="hover:bg-accent text-muted-foreground flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors">
-            <Plus className="size-4" />
-            More feeds
-          </button>
-        </div>
-      )}
+      {session && <FeedSwitcher />}
 
       {/* Logged-in-only recompute control stays visible even with an empty
           snapshot, since that's precisely the state it's meant to fix. */}
@@ -138,6 +124,53 @@ export function SidebarRight() {
         </a>
       </div>
     </aside>
+  );
+}
+
+const FEED_LINK =
+  'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
+
+// Discover / Following both live on "/" — Following is `/?feed=following`.
+function FeedSwitcher() {
+  const location = useLocation();
+  const onHome = location.pathname === '/';
+  const following = onHome && 'feed' in (location.search as object);
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Link
+        to="/"
+        search={{}}
+        className={cn(
+          FEED_LINK,
+          onHome && !following
+            ? 'bg-primary text-primary-foreground'
+            : 'hover:bg-accent',
+        )}
+      >
+        <Compass
+          className={cn('size-4', onHome && !following ? '' : 'text-primary')}
+        />
+        Discover
+      </Link>
+      <Link
+        to="/"
+        search={{ feed: 'following' }}
+        className={cn(
+          FEED_LINK,
+          following ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+        )}
+      >
+        <ListFilter className="size-4" />
+        Following
+      </Link>
+      <button
+        className={cn(FEED_LINK, 'hover:bg-accent text-muted-foreground')}
+      >
+        <Plus className="size-4" />
+        More feeds
+      </button>
+    </div>
   );
 }
 

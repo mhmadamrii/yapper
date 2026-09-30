@@ -66,12 +66,14 @@ export function SidebarLeft() {
   const collapsed = location.pathname.startsWith('/messages');
 
   return (
-    <aside className="sticky top-0 hidden h-svh flex-col items-start py-6 pl-10 pr-6 md:flex">
+    <aside
+      className={cn(
+        'sticky top-0 hidden h-svh shrink-0 flex-col items-start py-6 pl-10 pr-6 md:flex xl:w-full',
+        !collapsed && 'w-64',
+      )}
+    >
       <div
-        className={cn(
-          'flex flex-col gap-1',
-          collapsed ? 'w-fit' : session || isPending ? 'w-50' : 'w-64',
-        )}
+        className={cn('flex flex-col gap-1', collapsed ? 'w-fit' : 'w-full')}
       >
         {isPending ? (
           <SidebarSkeleton />
@@ -179,14 +181,14 @@ function LoggedInNav({
   const unreadMessagesCount = unreadMessagesQuery.data?.count ?? 0;
 
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex flex-col items-start gap-1">
       <AccountChip user={user} collapsed={collapsed} />
 
       {navItemsBeforeProfile.map(({ label, icon: Icon, to }) => (
         <Link
           key={label}
           to={to}
-          className={LINK_CLASSNAME}
+          className={cn(LINK_CLASSNAME, !collapsed && 'pr-5')}
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >
@@ -194,7 +196,7 @@ function LoggedInNav({
             <>
               <span className="relative">
                 <Icon
-                  className="size-6"
+                  className="size-6 shrink-0"
                   fill={isActive ? 'currentColor' : 'none'}
                 />
                 {label === 'Notifications' && unreadCount > 0 && (
@@ -213,13 +215,13 @@ function LoggedInNav({
       <Link
         to="/profile/$userId"
         params={{ userId: user.id }}
-        className={LINK_CLASSNAME}
+        className={cn(LINK_CLASSNAME, !collapsed && 'pr-5')}
         activeProps={{ className: 'font-bold' }}
       >
         {({ isActive }) => (
           <>
             <User
-              className="size-6"
+              className="size-6 shrink-0"
               fill={isActive ? 'currentColor' : 'none'}
             />
             {!collapsed && 'Profile'}
@@ -231,14 +233,14 @@ function LoggedInNav({
         <Link
           key={label}
           to={to}
-          className={LINK_CLASSNAME}
+          className={cn(LINK_CLASSNAME, !collapsed && 'pr-5')}
           activeProps={{ className: 'font-bold' }}
           activeOptions={{ exact: true }}
         >
           {({ isActive }) => (
             <>
               <Icon
-                className="size-6"
+                className="size-6 shrink-0"
                 fill={isActive ? 'currentColor' : 'none'}
               />
               {!collapsed && label}
@@ -252,10 +254,10 @@ function LoggedInNav({
           collapsed ? (
             <Button
               size="icon"
-              className="mt-4 rounded-full"
+              className="mt-4 size-12 shrink-0 self-start rounded-full"
               aria-label="New post"
             >
-              <PenSquare />
+              <PenSquare className="size-6" />
             </Button>
           ) : (
             <Button size="lg" className="mt-4 w-fit rounded-full px-8">

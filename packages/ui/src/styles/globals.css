@@ -132,6 +132,10 @@
     @apply font-sans;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+    /* Reserve scrollbar space always. Routes that overflow the viewport
+       (notifications) and ones that don't (messages) otherwise toggle the
+       scrollbar on navigation, shifting the whole centered layout. */
+    scrollbar-gutter: stable;
     /* Browser scroll anchoring silently adjusts scrollY to compensate for
        layout shifts near the viewport. That fights any scroll-position-driven
        UI (e.g. the home feed's collapsing header) — a shift it "corrects"

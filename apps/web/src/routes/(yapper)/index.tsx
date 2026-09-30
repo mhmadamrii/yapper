@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { Hash, ImageIcon } from 'lucide-react';
@@ -19,6 +19,10 @@ import { seo } from '@/lib/seo';
 import { cn } from '@yapper/ui/lib/utils';
 
 export const Route = createFileRoute('/(yapper)/')({
+  // `?feed=following` selects the Following tab; absent means Discover. Lives
+  // in the URL so the right sidebar's Discover/Following links can drive it.
+  validateSearch: (search: Record<string, unknown>): { feed?: 'following' } =>
+    search.feed === 'following' ? { feed: 'following' } : {},
   head: () => ({ meta: seo({ title: 'Discover' }) }),
   component: HomeComponent,
 });
@@ -31,7 +35,11 @@ function HomeComponent() {
 
   const tabs = session ? ['Discover', 'Following'] : ['Discover', 'Feeds ✨'];
 
-  const [activeTab, setActiveTab] = useState(0);
+  const { feed } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const activeTab = feed === 'following' ? 1 : 0;
+  const setActiveTab = (i: number) =>
+    navigate({ search: i === 1 ? { feed: 'following' } : {} });
   const showFollowing = !!session && activeTab === 1;
 
   // Collapses the logo/hashtag row on scroll-down, matching X's sticky
