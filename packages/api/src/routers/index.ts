@@ -5,6 +5,7 @@ import { interestRouter } from './interest';
 import { linkRouter } from './link';
 import { mediaRouter } from './media';
 import { messageRouter } from './message';
+import { moderationRouter } from './moderation';
 import { notificationRouter } from './notification';
 import { postRouter } from './post';
 import { recommendationRouter } from './recommendation';
@@ -19,6 +20,7 @@ export const appRouter = router({
   link: linkRouter,
   media: mediaRouter,
   message: messageRouter,
+  moderation: moderationRouter,
   notification: notificationRouter,
   post: postRouter,
   recommendation: recommendationRouter,
