@@ -17,8 +17,6 @@ export const env = createEnv({
     AWS_SECRET_ACCESS_KEY: z.string().min(1),
     GEMINI_API_KEY: z.string().min(1),
     BOT_CREATION_PASSWORD: z.string().min(1),
-    // The one account allowed into the owner/moderation tooling.
-    OWNER_EMAIL: z.email(),
     PORT: z.coerce.number().default(3000),
   },
   runtimeEnv: process.env,

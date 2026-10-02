@@ -3,20 +3,13 @@ import { user } from '@yapper/db/schema/auth';
 import { and, desc, eq, ilike, lt, or } from 'drizzle-orm';
 import { z } from 'zod';
 
-import {
-  isOwnerEmail,
-  ownerProcedure,
-  protectedProcedure,
-  router,
-} from '../index';
+import { isOwner, ownerProcedure, protectedProcedure, router } from '../index';
 
 const PAGE_SIZE = 30;
 
 export const moderationRouter = router({
   // Never throws — the web route guard uses it to decide whether to render.
-  isOwner: protectedProcedure.query(({ ctx }) =>
-    isOwnerEmail(ctx.session.user.email),
-  ),
+  isOwner: protectedProcedure.query(({ ctx }) => isOwner(ctx.session.user.id)),
 
   // Keyset pagination on (createdAt, id), newest first.
   users: ownerProcedure
@@ -39,6 +32,7 @@ export const moderationRouter = router({
           username: user.username,
           email: user.email,
           image: user.image,
+          role: user.role,
           isBot: user.isBot,
           verified: user.emailVerified,
           createdAt: user.createdAt,

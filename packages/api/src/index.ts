@@ -1,6 +1,8 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 
-import { env } from '@yapper/env/server';
+import { createDb } from '@yapper/db';
+import { user } from '@yapper/db/schema/auth';
+import { eq } from 'drizzle-orm';
 
 import type { Context } from './context';
 
@@ -26,15 +28,19 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-// Owner-only tooling (moderation). Gated on a single email from env — a
-// stopgap until real roles exist. The check runs here, not just in the web
-// route guard, so hitting the endpoint directly gets the same answer.
-export function isOwnerEmail(email: string) {
-  return email.toLowerCase() === env.OWNER_EMAIL.toLowerCase();
+// Owner-only tooling (moderation). The role is read from the DB on every
+// call rather than the session, so it's authoritative and can't be stale
+// behind better-auth's cookie cache.
+export async function isOwner(userId: string) {
+  const row = await createDb().query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: { role: true },
+  });
+  return row?.role === 'owner';
 }
 
-export const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!isOwnerEmail(ctx.session.user.email)) {
+export const ownerProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  if (!(await isOwner(ctx.session.user.id))) {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Owner only' });
   }
   return next();

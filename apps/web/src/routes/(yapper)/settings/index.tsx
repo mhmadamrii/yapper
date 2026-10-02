@@ -1,9 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { For, Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { useSession, useSignOut } from '@/hooks/use-session';
 import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';
+import { useTRPC } from '@/utils/trpc';
 
 import {
   createFileRoute,
@@ -26,6 +28,7 @@ import {
   Info,
   Lock,
   Paintbrush,
+  ShieldCheck,
   User,
   UserPlus,
 } from 'lucide-react';
@@ -56,6 +59,10 @@ function SettingsPage() {
   const navigate = useNavigate();
   const signOut = useSignOut();
   const { data: session, isPending } = useSession();
+  const trpc = useTRPC();
+  const { data: isOwner } = useQuery(
+    trpc.moderation.isOwner.queryOptions(undefined, { enabled: !!session }),
+  );
 
   return (
     <main className="border-border min-h-svh w-full max-w-[640px] border-x">
@@ -105,6 +112,16 @@ function SettingsPage() {
               <span className="flex-1 font-medium">Bots</span>
               <ChevronRight className="text-muted-foreground size-4" />
             </Link>
+            <Show when={isOwner}>
+              <Link
+                to="/moderation"
+                className="hover:bg-accent/50 border-border flex w-full items-center gap-4 border-b px-4 py-3.5 text-left transition-colors"
+              >
+                <ShieldCheck className="size-5" />
+                <span className="flex-1 font-medium">Moderation</span>
+                <ChevronRight className="text-muted-foreground size-4" />
+              </Link>
+            </Show>
             <div className="border-border border-b">
               <For each={SETTINGS_ROWS}>
                 {({ label, icon: Icon }) => (

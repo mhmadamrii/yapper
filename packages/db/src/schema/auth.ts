@@ -1,6 +1,9 @@
 import { relations } from 'drizzle-orm';
 import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
 
+export const userRoles = ['user', 'owner'] as const;
+export type UserRole = (typeof userRoles)[number];
+
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -13,6 +16,10 @@ export const user = pgTable('user', {
   // better-auth sign-up) — see `packages/api/src/routers/bot.ts`. Not needed
   // for posts to render correctly, only so the UI/queries can flag or
   // exclude bots later.
+  // Authorization role. Everyone registers as 'user'; 'owner' is granted by
+  // hand in the DB (no endpoint can set it). Checked server-side from the DB
+  // row, not the session, so a change applies immediately.
+  role: text('role').$type<UserRole>().default('user').notNull(),
   isBot: boolean('is_bot').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
