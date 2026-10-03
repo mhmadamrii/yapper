@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import { user } from './auth';
 import { linkPreview } from './link-preview';
 import { interest } from './interest';
+import { community } from './community';
 
 import {
   pgTable,
@@ -54,6 +55,13 @@ export const post = pgTable(
     interestSlug: text('interest_slug').references(() => interest.slug, {
       onDelete: 'set null',
     }),
+    // Set when posted into a community. Community posts are isolated: every
+    // global read path (feeds, search, profiles, trending) filters on
+    // `community_id is null`, and only `post.byCommunity` / `post.byId`
+    // (membership-checked for private communities) can return them.
+    communityId: text('community_id').references(() => community.id, {
+      onDelete: 'cascade',
+    }),
     // Denormalized engagement counters — updated with atomic increments
     // alongside like/repost/reply writes, never recomputed via COUNT(*).
     // repostCount covers both a plain repost and a quote post, same as
@@ -85,6 +93,11 @@ export const post = pgTable(
     index('post_replyTo_idx').on(table.replyToPostId),
     index('post_quotedPost_idx').on(table.quotedPostId),
     index('post_interest_idx').on(table.interestSlug),
+    index('post_community_created_idx').on(
+      table.communityId,
+      table.createdAt.desc(),
+      table.id.desc(),
+    ),
     index('post_search_vector_idx').using('gin', table.searchVector),
   ],
 );

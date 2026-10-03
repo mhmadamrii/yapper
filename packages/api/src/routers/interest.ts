@@ -86,6 +86,7 @@ export const interestRouter = router({
           and(
             inArray(post.interestSlug, interestSlugs),
             isNull(post.replyToPostId),
+            isNull(post.communityId),
             feedExcluded.size > 0
               ? notInArray(post.authorId, [...feedExcluded])
               : undefined,
@@ -151,6 +152,7 @@ export const interestRouter = router({
               mySlugs.map((row) => row.slug),
             ),
             isNull(post.replyToPostId),
+            isNull(post.communityId),
             sql`${post.createdAt} >= now() - make_interval(hours => ${TRENDING_WINDOW_HOURS})`,
             feedExcluded.size > 0
               ? notInArray(post.authorId, [...feedExcluded])

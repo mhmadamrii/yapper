@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@yapper/ui/components/input';
-import { Flame, LayoutGrid, Search, TrendingUp, X } from 'lucide-react';
+import { Flame, LayoutGrid, Search, TrendingUp, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
@@ -10,6 +10,7 @@ import { useSession } from '@/hooks/use-session';
 import { useTRPC } from '@/utils/trpc';
 import { seo } from '@/lib/seo';
 import { timeAgo } from '@/lib/utils';
+import { CommunityRow } from '@/routes/(yapper)/-components/community-card';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 
 export const Route = createFileRoute('/(yapper)/search/')({
@@ -196,6 +197,8 @@ function ExploreDefault() {
         </div>
       </Show>
 
+      <CommunitiesSection />
+
       <Show when={session}>
         <div className="border-border border-b p-4">
           <div className="mb-3 flex items-center gap-2 font-bold">
@@ -272,5 +275,48 @@ function ExploreDefault() {
         </div>
       </Show>
     </>
+  );
+}
+
+function CommunitiesSection() {
+  const trpc = useTRPC();
+  const listQuery = useQuery(trpc.community.list.queryOptions({}));
+  const items = listQuery.data?.items ?? [];
+
+  // Joined communities first, then the biggest ones to discover.
+  const shown = [
+    ...items.filter((c) => c.joined),
+    ...items.filter((c) => !c.joined),
+  ].slice(0, 3);
+
+  return (
+    <div className="border-border border-b pt-4">
+      <div className="mb-1 flex items-center gap-2 px-4 font-bold">
+        <Users className="text-primary size-5" />
+        Communities
+      </div>
+
+      <Show
+        when={shown.length > 0}
+        fallback={
+          <p className="text-muted-foreground px-4 pt-2 text-sm">
+            Find people who share your interests, or start your own.
+          </p>
+        }
+      >
+        <For each={shown}>
+          {(c) => <CommunityRow key={c.id} community={c} joined={c.joined} />}
+        </For>
+      </Show>
+
+      <div className="p-4">
+        <Link
+          to="/communities"
+          className="bg-primary text-primary-foreground block w-full rounded-full py-2.5 text-center font-semibold"
+        >
+          Explore communities
+        </Link>
+      </div>
+    </div>
   );
 }

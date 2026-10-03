@@ -57,9 +57,12 @@ export interface InitialDraft {
 export function DialogCreatePost({
   trigger,
   initialDraft,
+  communityId,
 }: {
   trigger: React.ReactElement;
   initialDraft?: InitialDraft;
+  // Posts into this community instead of the global timeline.
+  communityId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(initialDraft?.content ?? '');
@@ -187,6 +190,7 @@ export function DialogCreatePost({
         // so what gets stored matches what the composer showed.
         linkUrl: media.length > 0 ? undefined : linkPreview.linkUrl,
         interestSlug: selectedInterest ?? undefined,
+        communityId,
       });
 
       // Post exists now — that's the goal. Draft cleanup and cache
@@ -205,6 +209,11 @@ export function DialogCreatePost({
       queryClient.invalidateQueries({
         queryKey: trpc.post.list.infiniteQueryKey(),
       });
+      if (communityId) {
+        queryClient.invalidateQueries({
+          queryKey: trpc.post.byCommunity.pathKey(),
+        });
+      }
 
       toast.success('Post created');
       reset();

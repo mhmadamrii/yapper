@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
 import type { Database, Transaction } from '@yapper/db';
+import { community, communityMember } from '@yapper/db/schema/community';
 import { like, repost, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
 import { follow, userStats } from '@yapper/db/schema/social';
@@ -60,6 +61,7 @@ export function buildPostInsertStatements(
     // caller is expected to have gone through `getOrCreateLinkPreview`.
     linkPreviewUrl?: string;
     interestSlug?: string;
+    communityId?: string;
   },
 ) {
   const insertPost = db.insert(post).values({
@@ -70,6 +72,7 @@ export function buildPostInsertStatements(
     quotedPostId: args.quotedPostId,
     linkPreviewUrl: args.linkPreviewUrl,
     interestSlug: args.interestSlug,
+    communityId: args.communityId,
   });
 
   const extras = [];
@@ -111,7 +114,9 @@ export function buildPostInsertStatements(
   // Hashtags are materialized into their own table at write time so the
   // trending cron never parses post bodies. Deduped within the post, so one
   // author can't count twice for a tag from a single post.
-  const hashtags = extractHashtags(args.content);
+  // Community posts are isolated from global surfaces, so they stay out of
+  // trending too.
+  const hashtags = args.communityId ? [] : extractHashtags(args.content);
   if (hashtags.length > 0) {
     extras.push(
       db.insert(hashtagMention).values(
@@ -238,7 +243,7 @@ export async function hydratePosts(
   if (ids.length === 0) return [];
 
   const rows = await db.query.post.findMany({
-    where: inArray(post.id, ids),
+    where: and(inArray(post.id, ids), isNull(post.communityId)),
     with: postWith,
   });
 
@@ -299,7 +304,7 @@ async function pageEngagedPosts(
     ids.length === 0
       ? []
       : await db.query.post.findMany({
-          where: inArray(post.id, ids),
+          where: and(inArray(post.id, ids), isNull(post.communityId)),
           with: postWith,
         });
   const byId = new Map(posts.map((row) => [row.id, row]));
@@ -308,6 +313,33 @@ async function pageEngagedPosts(
     .filter((row): row is NonNullable<typeof row> => row != null);
 
   return { rows, nextCursor };
+}
+
+// Whether `userId` may see/post in `communityId`: public communities are open
+// to read; private ones need membership. Posting always needs membership.
+async function communityAccess(
+  db: ReturnType<typeof createDb>,
+  communityId: string,
+  userId: string | undefined,
+) {
+  const found = await db.query.community.findFirst({
+    where: eq(community.id, communityId),
+    columns: { visibility: true },
+  });
+  if (!found) return null;
+  const member = userId
+    ? await db.query.communityMember.findFirst({
+        where: and(
+          eq(communityMember.communityId, communityId),
+          eq(communityMember.userId, userId),
+        ),
+        columns: { userId: true },
+      })
+    : undefined;
+  return {
+    isMember: !!member,
+    canRead: found.visibility === 'public' || !!member,
+  };
 }
 
 export const postRouter = router({
@@ -341,6 +373,7 @@ export const postRouter = router({
         .where(
           and(
             isNull(post.replyToPostId),
+            isNull(post.communityId),
             feedExcluded.size > 0
               ? notInArray(post.authorId, [...feedExcluded])
               : undefined,
@@ -407,6 +440,7 @@ export const postRouter = router({
           and(
             sql`${post.searchVector} @@ ${tsQuery}`,
             isNull(post.replyToPostId),
+            isNull(post.communityId),
             feedExcluded.size > 0
               ? notInArray(post.authorId, [...feedExcluded])
               : undefined,
@@ -472,6 +506,7 @@ export const postRouter = router({
         where: and(
           inArray(post.authorId, followeeIds),
           isNull(post.replyToPostId),
+          isNull(post.communityId),
           cursor
             ? or(
                 lt(post.createdAt, new Date(cursor.createdAt)),
@@ -548,6 +583,12 @@ export const postRouter = router({
       if (blocked.has(found.authorId)) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
       }
+      if (found.communityId) {
+        const access = await communityAccess(db, found.communityId, viewerId);
+        if (!access?.canRead) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
+        }
+      }
       const visibleReplies = found.replies.filter(
         (reply) => !feedExcluded.has(reply.authorId),
       );
@@ -609,6 +650,7 @@ export const postRouter = router({
         // misrepresents where the link goes.
         linkUrl: z.string().max(2048).optional(),
         interestSlug: z.string().min(1).optional(),
+        communityId: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -616,11 +658,14 @@ export const postRouter = router({
       const postId = crypto.randomUUID();
       const { blocked } = await getViewerExclusions(db, ctx.session.user.id);
 
+      // Replies live in their parent's community; otherwise the composer's.
+      let communityId: string | undefined = input.communityId;
+
       let parentAuthorId: string | undefined;
       if (input.replyToPostId) {
         const parent = await db.query.post.findFirst({
           where: eq(post.id, input.replyToPostId),
-          columns: { authorId: true },
+          columns: { authorId: true, communityId: true },
         });
         if (!parent) {
           throw new TRPCError({
@@ -635,13 +680,14 @@ export const postRouter = router({
           });
         }
         parentAuthorId = parent.authorId;
+        communityId = parent.communityId ?? undefined;
       }
 
       let quotedAuthorId: string | undefined;
       if (input.quotedPostId) {
         const quoted = await db.query.post.findFirst({
           where: eq(post.id, input.quotedPostId),
-          columns: { authorId: true },
+          columns: { authorId: true, communityId: true },
         });
         if (!quoted) {
           throw new TRPCError({
@@ -655,7 +701,27 @@ export const postRouter = router({
             message: "You can't quote this post",
           });
         }
+        if (quoted.communityId) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: "Community posts can't be quoted",
+          });
+        }
         quotedAuthorId = quoted.authorId;
+      }
+
+      if (communityId) {
+        const access = await communityAccess(
+          db,
+          communityId,
+          ctx.session.user.id,
+        );
+        if (!access?.isMember) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Join this community to post in it',
+          });
+        }
       }
 
       // Normally a cache hit — the composer already unfurled this URL to draw
@@ -680,6 +746,7 @@ export const postRouter = router({
           quotedPostId: input.quotedPostId,
           linkPreviewUrl,
           interestSlug: input.interestSlug,
+          communityId,
         });
         for (const statement of statements) {
           await statement;
@@ -704,6 +771,77 @@ export const postRouter = router({
       }
 
       return { id: postId };
+    }),
+
+  // A community's own feed, newest first. A private community returns
+  // `locked: true` with no items to anyone who isn't a member — the client
+  // renders a blurred placeholder, never real content.
+  byCommunity: publicProcedure
+    .input(
+      z.object({
+        communityId: z.string().min(1),
+        limit: z.number().int().min(1).max(50).default(20),
+        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const viewerId = ctx.session?.user.id;
+      const { cursor } = input;
+
+      const access = await communityAccess(db, input.communityId, viewerId);
+      if (!access) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+      if (!access.canRead) {
+        return { locked: true as const, items: [], nextCursor: null };
+      }
+
+      const { feedExcluded } = await getViewerExclusions(db, viewerId);
+
+      const rows = await db.query.post.findMany({
+        where: and(
+          eq(post.communityId, input.communityId),
+          isNull(post.replyToPostId),
+          feedExcluded.size > 0
+            ? notInArray(post.authorId, [...feedExcluded])
+            : undefined,
+          cursor
+            ? or(
+                lt(post.createdAt, new Date(cursor.createdAt)),
+                and(
+                  eq(post.createdAt, new Date(cursor.createdAt)),
+                  lt(post.id, cursor.id),
+                ),
+              )
+            : undefined,
+        ),
+        orderBy: [desc(post.createdAt), desc(post.id)],
+        limit: input.limit + 1,
+        with: postWith,
+      });
+
+      let nextCursor: { createdAt: string; id: string } | null = null;
+      if (rows.length > input.limit) {
+        rows.pop();
+        const last = rows[rows.length - 1]!;
+        nextCursor = { createdAt: last.createdAt.toISOString(), id: last.id };
+      }
+
+      const engagement = await viewerEngagement(
+        db,
+        viewerId,
+        rows.map((row) => row.id),
+      );
+
+      return {
+        locked: false as const,
+        items: stampEngagement(rows, engagement),
+        nextCursor,
+      };
     }),
 
   byUser: publicProcedure
@@ -735,6 +873,7 @@ export const postRouter = router({
         return db.query.post.findMany({
           where: and(
             eq(post.authorId, userId),
+            isNull(post.communityId),
             tab === 'posts'
               ? isNull(post.replyToPostId)
               : isNotNull(post.replyToPostId),
@@ -891,6 +1030,16 @@ export const postRouter = router({
       const userId = ctx.session.user.id;
 
       if (input.reposted) {
+        const target = await db.query.post.findFirst({
+          where: eq(post.id, input.postId),
+          columns: { communityId: true },
+        });
+        if (target?.communityId) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: "Community posts can't be reposted",
+          });
+        }
         // Composite PK makes double-reposts a no-op; only a real insert
         // increments the denormalized counter.
         const inserted = await db

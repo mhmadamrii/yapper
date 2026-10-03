@@ -45,3 +45,21 @@ export const ownerProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   }
   return next();
 });
+
+// "Verified" is the emailVerified flag the owner toggles in moderation.
+// Read from the DB each call, same reasoning as `isOwner`.
+export const verifiedProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const row = await createDb().query.user.findFirst({
+      where: eq(user.id, ctx.session.user.id),
+      columns: { emailVerified: true },
+    });
+    if (!row?.emailVerified) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Only verified users can do this',
+      });
+    }
+    return next();
+  },
+);

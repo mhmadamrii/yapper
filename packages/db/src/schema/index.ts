@@ -10,3 +10,4 @@ export * from './message';
 export * from './trending';
 export * from './interest';
 export * from './bot';
+export * from './community';

@@ -35,6 +35,7 @@ import {
   Search,
   Settings,
   User,
+  Users,
 } from 'lucide-react';
 
 export interface AccountUser {
@@ -52,6 +53,7 @@ export const navItemsBeforeProfile = [
   { label: 'Notifications', icon: Bell, to: '/notifications' },
   { label: 'Chat', icon: MessageCircle, to: '/messages' },
   { label: 'Feeds', icon: Hash, to: '/feeds' },
+  { label: 'Communities', icon: Users, to: '/communities' },
   { label: 'Drafts', icon: List, to: '/drafts' },
   { label: 'Saved', icon: Bookmark, to: '/saved' },
 ] as const;
