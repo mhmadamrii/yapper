@@ -41,7 +41,11 @@ async function generateWithRetry(systemPrompt: string) {
           'Write one social media post now. Output only the post text, no quotes, no hashtags unless they fit naturally.',
         config: {
           systemInstruction: systemPrompt,
-          maxOutputTokens: 400,
+          // Thinking tokens count against this cap, so a tight value gets
+          // eaten by hidden reasoning and cuts the visible post off
+          // (MAX_TOKENS). Post length is enforced by the prompt + the
+          // MAX_POST_LENGTH slice below, so this is only a runaway guard.
+          maxOutputTokens: 2048,
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         },
       });

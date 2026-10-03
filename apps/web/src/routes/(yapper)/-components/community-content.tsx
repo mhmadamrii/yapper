@@ -1,4 +1,8 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { Lock, PenSquare } from 'lucide-react';
@@ -7,15 +11,11 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { toast } from '@/lib/toast';
 import { useTRPC } from '@/utils/trpc';
 import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-post';
 
-const TABS = [
-  { key: 'posts', label: 'Posts' },
-  { key: 'members', label: 'Members' },
-] as const;
-
-type Tab = (typeof TABS)[number]['key'];
+type Tab = 'posts' | 'members' | 'requests';
 
 // Static decoys — no real data is ever sent for a locked community, so the
 // blur is purely cosmetic.
@@ -58,17 +58,36 @@ export function CommunityContent({
   communityId,
   visibility,
   role,
+  pendingRequestCount,
 }: {
   communityId: string;
   visibility: 'public' | 'private';
   role: 'owner' | 'moderator' | 'member' | null;
+  pendingRequestCount: number;
 }) {
   const [tab, setTab] = useState<Tab>('posts');
+  const canManage = role === 'owner' || role === 'moderator';
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'posts', label: 'Posts' },
+    { key: 'members', label: 'Members' },
+    ...(canManage && visibility === 'private'
+      ? [
+          {
+            key: 'requests' as const,
+            label:
+              pendingRequestCount > 0
+                ? `Requests (${pendingRequestCount})`
+                : 'Requests',
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
       <nav className="border-border flex border-b">
-        <For each={TABS}>
+        <For each={tabs}>
           {(t) => (
             <button
               key={t.key}
@@ -89,18 +108,21 @@ export function CommunityContent({
         </For>
       </nav>
 
-      <Show
-        when={tab === 'posts'}
-        fallback={
+      <Switch>
+        <Match when={tab === 'posts'}>
+          <PostsTab
+            communityId={communityId}
+            visibility={visibility}
+            isMember={!!role}
+          />
+        </Match>
+        <Match when={tab === 'members'}>
           <MembersTab communityId={communityId} visibility={visibility} />
-        }
-      >
-        <PostsTab
-          communityId={communityId}
-          visibility={visibility}
-          isMember={!!role}
-        />
-      </Show>
+        </Match>
+        <Match when={tab === 'requests'}>
+          <RequestsTab communityId={communityId} />
+        </Match>
+      </Switch>
     </>
   );
 }
@@ -153,7 +175,7 @@ function PostsTab({
           </p>
         </Match>
         <Match when={locked && visibility === 'private'}>
-          <LockedPlaceholder label="Join to see posts." />
+          <LockedPlaceholder label="Request to join to see posts." />
         </Match>
         <Match when={posts.length > 0}>
           <For each={posts}>
@@ -208,7 +230,7 @@ function MembersTab({
         </p>
       </Match>
       <Match when={locked && visibility === 'private'}>
-        <LockedPlaceholder label="Join to see members." />
+        <LockedPlaceholder label="Request to join to see members." />
       </Match>
       <Match when={members.length > 0}>
         <For each={members}>
@@ -252,6 +274,116 @@ function MembersTab({
               onClick={() => membersQuery.fetchNextPage()}
             >
               {membersQuery.isFetchingNextPage ? 'Loading...' : 'Load more'}
+            </Button>
+          </div>
+        </Show>
+      </Match>
+    </Switch>
+  );
+}
+
+function RequestsTab({ communityId }: { communityId: string }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const requestsQuery = useInfiniteQuery(
+    trpc.community.requests.infiniteQueryOptions(
+      { id: communityId },
+      { getNextPageParam: (last) => last.nextCursor },
+    ),
+  );
+  const requests = requestsQuery.data?.pages.flatMap((p) => p.items) ?? [];
+
+  const decide = useMutation(
+    trpc.community.decideRequest.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: trpc.community.pathKey() }),
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  return (
+    <Switch
+      fallback={
+        <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+          No pending requests.
+        </p>
+      }
+    >
+      <Match when={requestsQuery.isPending}>
+        <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+          Loading...
+        </p>
+      </Match>
+      <Match when={requests.length > 0}>
+        <For each={requests}>
+          {(r) => (
+            <div
+              key={r.id}
+              className="border-border flex items-center gap-3 border-b px-4 py-3"
+            >
+              <Link
+                to="/profile/$userId"
+                params={{ userId: r.id }}
+                className="flex min-w-0 flex-1 items-center gap-3"
+              >
+                <UserAvatar
+                  name={r.name}
+                  image={r.image}
+                  className="size-10 shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1 truncate font-bold">
+                    {r.name}
+                    <Show when={r.verified}>
+                      <VerifiedBadge />
+                    </Show>
+                  </p>
+                  <p className="text-muted-foreground truncate text-sm">
+                    @{r.username ?? 'unknown'}
+                  </p>
+                </div>
+              </Link>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="rounded-full"
+                disabled={decide.isPending}
+                onClick={() =>
+                  decide.mutate({
+                    id: communityId,
+                    userId: r.id,
+                    approve: false,
+                  })
+                }
+              >
+                Decline
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-full"
+                disabled={decide.isPending}
+                onClick={() =>
+                  decide.mutate({
+                    id: communityId,
+                    userId: r.id,
+                    approve: true,
+                  })
+                }
+              >
+                Accept
+              </Button>
+            </div>
+          )}
+        </For>
+        <Show when={requestsQuery.hasNextPage}>
+          <div className="flex justify-center p-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={requestsQuery.isFetchingNextPage}
+              onClick={() => requestsQuery.fetchNextPage()}
+            >
+              Load more
             </Button>
           </div>
         </Show>

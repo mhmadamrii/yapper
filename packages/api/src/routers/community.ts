@@ -1,8 +1,12 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
 import { user } from '@yapper/db/schema/auth';
-import { community, communityMember } from '@yapper/db/schema/community';
-import { and, desc, eq, ilike, lt, or, sql } from 'drizzle-orm';
+import {
+  community,
+  communityJoinRequest,
+  communityMember,
+} from '@yapper/db/schema/community';
+import { and, asc, desc, eq, gt, ilike, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { getViewerExclusions } from '../lib/social-filters';
@@ -25,6 +29,26 @@ const summaryColumns = {
   visibility: community.visibility,
   memberCount: community.memberCount,
 };
+
+async function requireManager(
+  db: ReturnType<typeof createDb>,
+  communityId: string,
+  userId: string,
+) {
+  const membership = await db.query.communityMember.findFirst({
+    where: and(
+      eq(communityMember.communityId, communityId),
+      eq(communityMember.userId, userId),
+    ),
+    columns: { role: true },
+  });
+  if (membership?.role !== 'owner' && membership?.role !== 'moderator') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Only owners and moderators can do this',
+    });
+  }
+}
 
 export const communityRouter = router({
   // Verified users only. Caps communities per owner since creation is cheap
@@ -229,7 +253,32 @@ export const communityRouter = router({
           })
         : undefined;
 
-      return { ...found, role: membership?.role ?? null };
+      const role = membership?.role ?? null;
+
+      const [requested, pending] = await Promise.all([
+        me && !role
+          ? db.query.communityJoinRequest.findFirst({
+              where: and(
+                eq(communityJoinRequest.communityId, input.id),
+                eq(communityJoinRequest.userId, me),
+              ),
+              columns: { userId: true },
+            })
+          : undefined,
+        role === 'owner' || role === 'moderator'
+          ? db
+              .select({ n: sql<number>`count(*)::int` })
+              .from(communityJoinRequest)
+              .where(eq(communityJoinRequest.communityId, input.id))
+          : undefined,
+      ]);
+
+      return {
+        ...found,
+        role,
+        requested: !!requested,
+        pendingRequestCount: pending?.[0]?.n ?? 0,
+      };
     }),
 
   // Members, newest first (keyset on (joinedAt, userId)). Private
@@ -356,6 +405,157 @@ export const communityRouter = router({
         }
       });
       return { id: input.id };
+    }),
+
+  // Private communities: ask to join; an owner/moderator decides.
+  requestJoin: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = createDb();
+      const me = ctx.session.user.id;
+
+      const found = await db.query.community.findFirst({
+        where: eq(community.id, input.id),
+        columns: { visibility: true },
+      });
+      if (!found) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+      if (found.visibility !== 'private') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This community is public — just join it',
+        });
+      }
+
+      const existing = await db.query.communityMember.findFirst({
+        where: and(
+          eq(communityMember.communityId, input.id),
+          eq(communityMember.userId, me),
+        ),
+        columns: { userId: true },
+      });
+      if (existing) return { id: input.id };
+
+      await db
+        .insert(communityJoinRequest)
+        .values({ communityId: input.id, userId: me })
+        .onConflictDoNothing();
+      return { id: input.id };
+    }),
+
+  cancelRequest: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await createDb()
+        .delete(communityJoinRequest)
+        .where(
+          and(
+            eq(communityJoinRequest.communityId, input.id),
+            eq(communityJoinRequest.userId, ctx.session.user.id),
+          ),
+        );
+      return { id: input.id };
+    }),
+
+  // Pending requests, oldest first (keyset on (createdAt, userId)).
+  requests: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        cursor: z
+          .object({ createdAt: z.coerce.date(), userId: z.string() })
+          .nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      await requireManager(db, input.id, ctx.session.user.id);
+      const { cursor } = input;
+
+      const rows = await db
+        .select({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          image: user.image,
+          verified: user.emailVerified,
+          createdAt: communityJoinRequest.createdAt,
+        })
+        .from(communityJoinRequest)
+        .innerJoin(user, eq(user.id, communityJoinRequest.userId))
+        .where(
+          and(
+            eq(communityJoinRequest.communityId, input.id),
+            cursor
+              ? or(
+                  gt(communityJoinRequest.createdAt, cursor.createdAt),
+                  and(
+                    eq(communityJoinRequest.createdAt, cursor.createdAt),
+                    gt(communityJoinRequest.userId, cursor.userId),
+                  ),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(
+          asc(communityJoinRequest.createdAt),
+          asc(communityJoinRequest.userId),
+        )
+        .limit(PAGE_SIZE + 1);
+
+      const items = rows.slice(0, PAGE_SIZE);
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor:
+          rows.length > PAGE_SIZE && last
+            ? { createdAt: last.createdAt, userId: last.id }
+            : null,
+      };
+    }),
+
+  decideRequest: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        userId: z.string().min(1),
+        approve: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = createDb();
+      await requireManager(db, input.id, ctx.session.user.id);
+
+      await db.transaction(async (tx) => {
+        const removed = await tx
+          .delete(communityJoinRequest)
+          .where(
+            and(
+              eq(communityJoinRequest.communityId, input.id),
+              eq(communityJoinRequest.userId, input.userId),
+            ),
+          )
+          .returning({ userId: communityJoinRequest.userId });
+        // Already decided (or cancelled) — nothing to do.
+        if (removed.length === 0 || !input.approve) return;
+
+        const inserted = await tx
+          .insert(communityMember)
+          .values({ communityId: input.id, userId: input.userId })
+          .onConflictDoNothing()
+          .returning({ userId: communityMember.userId });
+        if (inserted.length > 0) {
+          await tx
+            .update(community)
+            .set({ memberCount: sql`${community.memberCount} + 1` })
+            .where(eq(community.id, input.id));
+        }
+      });
+      return { id: input.id, userId: input.userId };
     }),
 
   // Owners can't leave their own community (no transfer flow yet).

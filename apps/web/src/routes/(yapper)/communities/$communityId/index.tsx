@@ -27,7 +27,7 @@ function CommunityPage() {
   const router = useRouter();
   const trpc = useTRPC();
   const { data: session } = useSession();
-  const { join, leave } = useCommunityMembership();
+  const { join, leave, requestJoin, cancelRequest } = useCommunityMembership();
 
   const communityQuery = useQuery(
     trpc.community.byId.queryOptions({ id: communityId }),
@@ -115,8 +115,22 @@ function CommunityPage() {
                         Join
                       </Button>
                     </Match>
+                    <Match when={c.requested}>
+                      <Button
+                        variant="secondary"
+                        className="rounded-full"
+                        disabled={cancelRequest.isPending}
+                        onClick={() => cancelRequest.mutate({ id: c.id })}
+                      >
+                        Requested
+                      </Button>
+                    </Match>
                     <Match when={true}>
-                      <Button className="rounded-full" disabled>
+                      <Button
+                        className="rounded-full"
+                        disabled={requestJoin.isPending}
+                        onClick={() => requestJoin.mutate({ id: c.id })}
+                      >
                         Request to join
                       </Button>
                     </Match>
@@ -149,6 +163,7 @@ function CommunityPage() {
                 communityId={c.id}
                 visibility={c.visibility}
                 role={c.role}
+                pendingRequestCount={c.pendingRequestCount}
               />
             </>
           )}

@@ -61,6 +61,29 @@ export const communityMember = pgTable(
   ],
 );
 
+// Pending requests to join a private community. Deciding a request deletes
+// it (approve also inserts the member row), so a row here always means
+// "waiting on an owner/moderator".
+export const communityJoinRequest = pgTable(
+  'community_join_request',
+  {
+    communityId: text('community_id')
+      .notNull()
+      .references(() => community.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.communityId, table.userId] }),
+    index('community_join_request_community_idx').on(
+      table.communityId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const communityRelations = relations(community, ({ one, many }) => ({
   owner: one(user, { fields: [community.ownerId], references: [user.id] }),
   members: many(communityMember),

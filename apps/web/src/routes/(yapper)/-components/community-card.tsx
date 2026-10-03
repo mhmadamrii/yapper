@@ -37,7 +37,23 @@ export function useCommunityMembership() {
     }),
   );
 
-  return { join, leave };
+  const requestJoin = useMutation(
+    trpc.community.requestJoin.mutationOptions({
+      onSuccess: () => {
+        toast.success('Request sent');
+        invalidate();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const cancelRequest = useMutation(
+    trpc.community.cancelRequest.mutationOptions({
+      onSuccess: invalidate,
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  return { join, leave, requestJoin, cancelRequest };
 }
 
 export function CommunityCover({
