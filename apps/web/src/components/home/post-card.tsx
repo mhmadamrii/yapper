@@ -155,7 +155,7 @@ export function PostCard({
               · {timeAgo(post.createdAt)}
             </span>
           </div>
-          <p className="mt-0.5 text-[15px] leading-normal whitespace-pre-wrap">
+          <p className="mt-0.5 text-[15px] leading-normal wrap-anywhere whitespace-pre-wrap">
             <MentionText text={post.content} />
           </p>
           <Show when={post.media.length > 0}>

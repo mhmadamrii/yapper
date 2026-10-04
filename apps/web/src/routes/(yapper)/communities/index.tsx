@@ -8,6 +8,7 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { useSession } from '@/hooks/use-session';
 import { seo } from '@/lib/seo';
 import { useTRPC } from '@/utils/trpc';
+import { CommunityListSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { CommunityRow } from '@/routes/(yapper)/-components/community-card';
 import { DialogCreateCommunity } from '@/routes/(yapper)/-components/dialog-create-community';
 
@@ -82,9 +83,7 @@ function CommunitiesPage() {
         }
       >
         <Match when={listQuery.isPending}>
-          <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-            Loading...
-          </p>
+          <CommunityListSkeleton />
         </Match>
         <Match when={communities.length > 0}>
           <For each={communities}>
