@@ -8,6 +8,7 @@ import { VerifiedBadge } from '@/components/verified-badge';
 import { useSession } from '@/hooks/use-session';
 import { seo } from '@/lib/seo';
 import { useTRPC } from '@/utils/trpc';
+import { CommunityDetailSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { CommunityContent } from '@/routes/(yapper)/-components/community-content';
 import { DialogCreateCommunity } from '@/routes/(yapper)/-components/dialog-create-community';
 import {
@@ -49,9 +50,7 @@ function CommunityPage() {
 
       <Switch>
         <Match when={communityQuery.isPending}>
-          <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-            Loading...
-          </p>
+          <CommunityDetailSkeleton />
         </Match>
         <Match when={communityQuery.isError}>
           <p className="text-muted-foreground px-4 py-12 text-center text-sm">
