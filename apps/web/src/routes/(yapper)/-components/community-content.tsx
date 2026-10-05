@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
+import { Spinner } from '@yapper/ui/components/spinner';
 import { Lock, PenSquare } from 'lucide-react';
 import { useState } from 'react';
 import { For, Match, Show, Switch } from '@/components/control-flow';
@@ -170,9 +171,9 @@ function PostsTab({
         }
       >
         <Match when={postsQuery.isPending}>
-          <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-            Loading...
-          </p>
+          <div className="text-muted-foreground flex justify-center px-4 py-12">
+            <Spinner className="size-6" />
+          </div>
         </Match>
         <Match when={locked && visibility === 'private'}>
           <LockedPlaceholder label="Request to join to see posts." />
@@ -225,9 +226,9 @@ function MembersTab({
       }
     >
       <Match when={membersQuery.isPending}>
-        <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-          Loading...
-        </p>
+        <div className="text-muted-foreground flex justify-center px-4 py-12">
+          <Spinner className="size-6" />
+        </div>
       </Match>
       <Match when={locked && visibility === 'private'}>
         <LockedPlaceholder label="Request to join to see members." />
@@ -310,9 +311,9 @@ function RequestsTab({ communityId }: { communityId: string }) {
       }
     >
       <Match when={requestsQuery.isPending}>
-        <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-          Loading...
-        </p>
+        <div className="text-muted-foreground flex justify-center px-4 py-12">
+          <Spinner className="size-6" />
+        </div>
       </Match>
       <Match when={requests.length > 0}>
         <For each={requests}>

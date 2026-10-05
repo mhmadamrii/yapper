@@ -1,1 +1,11 @@
 @import '@yapper/ui/globals.css';
+
+/* react-medium-image-zoom: match the app theme instead of the default white.
+   The doubled attribute selector out-ranks the library's own rules, which are
+   imported after this file and would otherwise win on source order. */
+[data-rmiz-modal-overlay][data-rmiz-modal-overlay='hidden'] {
+  background-color: transparent;
+}
+[data-rmiz-modal-overlay][data-rmiz-modal-overlay='visible'] {
+  background-color: color-mix(in oklab, var(--background) 95%, transparent);
+}

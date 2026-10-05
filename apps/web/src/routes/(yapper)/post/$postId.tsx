@@ -9,9 +9,11 @@ import { PostCardMenu } from '@/components/home/post-card-menu';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { ZoomableImage } from '@/components/zoomable-image';
 import { useSession } from '@/hooks/use-session';
 import { mediaUrl } from '@/lib/media';
 import { seo } from '@/lib/seo';
+import { toast } from '@/lib/toast';
 import { useDocumentTitle } from '@yapper/ui/hooks/use-document-title';
 import { useSetFollow } from '@/lib/use-set-follow';
 import { useSetLike } from '@/lib/use-set-like';
@@ -204,6 +206,16 @@ function PostDetail({ post }: { post: PostById }) {
   const goToProfile = () =>
     navigate({ to: '/profile/$userId', params: { userId: post.author.id } });
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/post/${post.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  };
+
   return (
     <article className="border-border relative border-b px-4 pt-4 pb-3">
       {/* Continues the thread line from the parent card into this avatar:
@@ -249,7 +261,7 @@ function PostDetail({ post }: { post: PostById }) {
         </Show>
       </div>
 
-      <p className="mt-3 text-xl leading-normal whitespace-pre-wrap">
+      <p className="mt-3 text-xl leading-normal wrap-anywhere whitespace-pre-wrap">
         <MentionText text={post.content} />
       </p>
 
@@ -261,9 +273,10 @@ function PostDetail({ post }: { post: PostById }) {
         >
           <For each={post.media}>
             {(m) => (
-              <img
+              <ZoomableImage
                 key={m.id}
                 src={mediaUrl(m.filePath, { width: 1200 })}
+                zoomSrc={mediaUrl(m.filePath, { width: 2400 })}
                 alt={m.altText ?? ''}
                 width={m.width}
                 height={m.height}
@@ -373,7 +386,10 @@ function PostDetail({ post }: { post: PostById }) {
               fill={post.savedByMe ? 'currentColor' : 'none'}
             />
           </button>
-          <button className="hover:text-foreground transition-colors">
+          <button
+            onClick={handleShare}
+            className="hover:text-foreground transition-colors"
+          >
             <Share className="size-5" />
           </button>
           <PostCardMenu post={post} />

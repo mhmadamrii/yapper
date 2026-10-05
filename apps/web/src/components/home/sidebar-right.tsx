@@ -128,7 +128,7 @@ export function SidebarRight() {
 }
 
 const FEED_LINK =
-  'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
+  'flex w-32 items-center gap-2 rounded-md px-2 py-1 text-sm font-medium transition-colors';
 
 // Discover / Following both live on "/" — Following is `/?feed=following`.
 function FeedSwitcher() {
@@ -164,12 +164,13 @@ function FeedSwitcher() {
         <ListFilter className="size-4" />
         Following
       </Link>
-      <button
+      <Link
+        to="/feeds"
         className={cn(FEED_LINK, 'hover:bg-accent text-muted-foreground')}
       >
         <Plus className="size-4" />
         More feeds
-      </button>
+      </Link>
     </div>
   );
 }

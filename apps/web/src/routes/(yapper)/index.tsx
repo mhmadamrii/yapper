@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { Hash, ImageIcon } from 'lucide-react';
+import { motion } from 'motion/react';
 import { PostCard } from '@/components/home/post-card';
 import { WhoToFollow } from '@/components/home/who-to-follow';
 import { UserAvatar } from '@/components/user-avatar';
@@ -42,19 +43,15 @@ function HomeComponent() {
     navigate({ search: i === 1 ? { feed: 'following' } : {} });
   const showFollowing = !!session && activeTab === 1;
 
-  // Collapses the logo/hashtag row on scroll-down, matching X's sticky
-  // header behavior. Reappears near the top or on any scroll-up, not just
-  // once the whole page is back at 0 — waiting for a full return-to-top
-  // would feel stuck on a long feed.
+  // The logo/hashtag row is only shown at the top of the feed: it collapses
+  // on scroll-down and stays hidden until the page is back near the top.
   const [logoBarVisible, setLogoBarVisible] = useState(true);
 
   useEffect(() => {
-    let lastY = window.scrollY;
     const onScroll = () => {
-      const y = window.scrollY;
-      setLogoBarVisible(y < 40 || y < lastY);
-      lastY = y;
+      setLogoBarVisible(window.scrollY < 40);
     };
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -94,17 +91,27 @@ function HomeComponent() {
     <main className="border-border min-h-svh w-full max-w-[640px] border-x">
       <header className="bg-background/80 border-border sticky top-0 z-10 border-b backdrop-blur">
         <Show when={session}>
-          <div
-            className={cn(
-              'relative flex items-center justify-center overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out',
+          <motion.div
+            initial={false}
+            animate={
               logoBarVisible
-                ? 'max-h-16 py-3 opacity-100'
-                : 'max-h-0 opacity-0',
-            )}
+                ? { maxHeight: 64, paddingBlock: 12, opacity: 1 }
+                : { maxHeight: 0, paddingBlock: 0, opacity: 0 }
+            }
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="relative flex items-center justify-center overflow-hidden"
           >
-            <img src="/yapper-logo.png" alt="Yapper" className="size-7" />
+            <motion.img
+              src="/yapper-logo.png"
+              alt="Yapper"
+              className="size-9"
+              animate={{ scale: logoBarVisible ? 1 : 0.6 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            />
             <Hash className="text-muted-foreground absolute right-4 size-5" />
-          </div>
+          </motion.div>
         </Show>
         <nav className="flex">
           <For each={tabs}>

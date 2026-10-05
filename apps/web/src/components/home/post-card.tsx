@@ -8,6 +8,7 @@ import { mediaUrl } from '@/lib/media';
 import { MentionText } from '@/components/mention-text';
 import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
+import { ZoomableImage } from '@/components/zoomable-image';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { QuotedPostPreview } from '@/components/home/quoted-post-preview';
 import { LinkPreviewCard } from '@/components/home/link-preview-card';
@@ -168,9 +169,10 @@ export function PostCard({
             >
               <For each={post.media}>
                 {(m) => (
-                  <img
+                  <ZoomableImage
                     key={m.id}
                     src={mediaUrl(m.filePath, { width: 1200 })}
+                    zoomSrc={mediaUrl(m.filePath, { width: 2400 })}
                     alt={m.altText ?? ''}
                     width={m.width}
                     height={m.height}
