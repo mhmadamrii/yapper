@@ -156,6 +156,10 @@ export const postRelations = relations(post, ({ one, many }) => ({
     fields: [post.interestSlug],
     references: [interest.slug],
   }),
+  community: one(community, {
+    fields: [post.communityId],
+    references: [community.id],
+  }),
 }));
 
 export const postMediaRelations = relations(postMedia, ({ one }) => ({

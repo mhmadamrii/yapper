@@ -206,6 +206,9 @@ const postWith = {
   linkPreview: true as const,
   author: { columns: postAuthorColumns },
   media: { orderBy: [asc(postMedia.position)] },
+  // Null for ordinary posts. Set on community posts so the Following feed can
+  // render the group header without a second lookup.
+  community: { columns: { id: true, name: true, coverKey: true } as const },
   // One level deep only: a quote of a quote renders as a plain embed, so
   // there's nothing to recurse into.
   quotedPost: {
@@ -472,7 +475,8 @@ export const postRouter = router({
     }),
 
   // Following tab: reverse-chronological, fan-out-on-read from the `follow`
-  // table (its PK is (followerId, followeeId), covering exactly this query).
+  // table (its PK is (followerId, followeeId), covering exactly this query)
+  // plus the viewer's joined communities.
   // Fan-out-on-write (precomputed per-follower timelines) would pay off at
   // scale with high-follow-count accounts, but reads-at-write-time is the
   // wrong trade here — portfolio-scale write volume, and simplicity wins.
@@ -498,15 +502,33 @@ export const postRouter = router({
         .map((row) => row.followeeId)
         .filter((id) => !feedExcluded.has(id));
 
-      if (followeeIds.length === 0) {
-        return { items: [], nextCursor: null };
-      }
+      // Posts from communities the viewer has joined ride the same keyset
+      // query as followed authors — one ordered stream, so pagination stays a
+      // single cursor. Membership is a subquery (never a client-supplied id
+      // list), which is what keeps private communities private, and leaving a
+      // community drops its posts from the feed with no extra bookkeeping.
+      const joinedCommunityIds = db
+        .select({ id: communityMember.communityId })
+        .from(communityMember)
+        .where(eq(communityMember.userId, viewerId));
 
       const rows = await db.query.post.findMany({
         where: and(
-          inArray(post.authorId, followeeIds),
           isNull(post.replyToPostId),
-          isNull(post.communityId),
+          or(
+            followeeIds.length > 0
+              ? and(
+                  inArray(post.authorId, followeeIds),
+                  isNull(post.communityId),
+                )
+              : undefined,
+            and(
+              inArray(post.communityId, joinedCommunityIds),
+              feedExcluded.size > 0
+                ? notInArray(post.authorId, [...feedExcluded])
+                : undefined,
+            ),
+          ),
           cursor
             ? or(
                 lt(post.createdAt, new Date(cursor.createdAt)),

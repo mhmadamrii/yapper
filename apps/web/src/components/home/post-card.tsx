@@ -18,6 +18,7 @@ import { useSetSave } from '@/lib/use-set-save';
 import { PostCardMenu } from '@/components/home/post-card-menu';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { DialogCreateQuote } from '@/routes/(yapper)/-components/dialog-create-quote';
+import { CommunityCover } from '@/routes/(yapper)/-components/community-card';
 import { formatCount, timeAgo } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { useNavigate } from '@tanstack/react-router';
@@ -75,6 +76,15 @@ export function PostCard({
     });
   };
 
+  const handleCommunityClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!post.community) return;
+    navigate({
+      to: '/communities/$communityId',
+      params: { communityId: post.community.id },
+    });
+  };
+
   const handleQuotedPostClick = () => {
     if (!post.quotedPost) return;
     navigate({
@@ -125,37 +135,106 @@ export function PostCard({
             threadLine ? 'flex w-12 shrink-0 flex-col items-center' : 'contents'
           }
         >
-          <ProfileHoverCard userId={post.author.id}>
-            <button onClick={handleProfileClick} className="h-fit shrink-0">
-              <UserAvatar
-                name={post.author.name}
-                image={post.author.image}
-                className="size-10"
-              />
-            </button>
-          </ProfileHoverCard>
+          <Show
+            when={post.community}
+            fallback={
+              <ProfileHoverCard userId={post.author.id}>
+                <button onClick={handleProfileClick} className="h-fit shrink-0">
+                  <UserAvatar
+                    name={post.author.name}
+                    image={post.author.image}
+                    className="size-10"
+                  />
+                </button>
+              </ProfileHoverCard>
+            }
+          >
+            {(community) => (
+              // Group cover as the anchor, poster's avatar overlapping its
+              // corner — the group is the context, the person is the voice.
+              <div className="relative h-fit shrink-0">
+                <button onClick={handleCommunityClick} className="block">
+                  <CommunityCover
+                    coverKey={community.coverKey}
+                    name={community.name}
+                    className="size-10 rounded-lg"
+                    width={160}
+                    height={160}
+                  />
+                </button>
+                <ProfileHoverCard userId={post.author.id}>
+                  <button
+                    onClick={handleProfileClick}
+                    className="ring-background absolute -right-1.5 -bottom-1.5 rounded-full ring-2"
+                  >
+                    <UserAvatar
+                      name={post.author.name}
+                      image={post.author.image}
+                      className="size-5"
+                    />
+                  </button>
+                </ProfileHoverCard>
+              </div>
+            )}
+          </Show>
           <Show when={threadLine}>
             <div className="bg-border mt-1 -mb-3 w-px flex-1" />
           </Show>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-1 text-sm">
-            <ProfileHoverCard userId={post.author.id}>
-              <button
-                onClick={handleProfileClick}
-                className="flex min-w-0 items-center gap-1 font-bold hover:underline"
-              >
-                <span className="truncate">{post.author.name}</span>
-                <Show when={post.author.emailVerified}>
-                  <VerifiedBadge />
-                </Show>
-              </button>
-            </ProfileHoverCard>
-            <span className="text-muted-foreground truncate">@{handle}</span>
-            <span className="text-muted-foreground">
-              · {timeAgo(post.createdAt)}
-            </span>
-          </div>
+          <Show
+            when={post.community}
+            fallback={
+              <div className="flex items-baseline gap-1 text-sm">
+                <ProfileHoverCard userId={post.author.id}>
+                  <button
+                    onClick={handleProfileClick}
+                    className="flex min-w-0 items-center gap-1 font-bold hover:underline"
+                  >
+                    <span className="truncate">{post.author.name}</span>
+                    <Show when={post.author.emailVerified}>
+                      <VerifiedBadge />
+                    </Show>
+                  </button>
+                </ProfileHoverCard>
+                <span className="text-muted-foreground truncate">
+                  @{handle}
+                </span>
+                <span className="text-muted-foreground">
+                  · {timeAgo(post.createdAt)}
+                </span>
+              </div>
+            }
+          >
+            {(community) => (
+              <div className="text-sm">
+                <div className="flex items-baseline gap-1">
+                  <button
+                    onClick={handleCommunityClick}
+                    className="min-w-0 truncate font-bold hover:underline"
+                  >
+                    {community.name}
+                  </button>
+                  <span className="text-muted-foreground shrink-0">
+                    · {timeAgo(post.createdAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ProfileHoverCard userId={post.author.id}>
+                    <button
+                      onClick={handleProfileClick}
+                      className="text-muted-foreground flex min-w-0 items-center gap-1 hover:underline"
+                    >
+                      <span className="truncate">{post.author.name}</span>
+                      <Show when={post.author.emailVerified}>
+                        <VerifiedBadge />
+                      </Show>
+                    </button>
+                  </ProfileHoverCard>
+                </div>
+              </div>
+            )}
+          </Show>
           <p className="mt-0.5 text-[15px] leading-normal wrap-anywhere whitespace-pre-wrap">
             <MentionText text={post.content} />
           </p>
