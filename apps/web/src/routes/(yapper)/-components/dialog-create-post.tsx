@@ -33,8 +33,8 @@ import {
 } from '@yapper/ui/components/dropdown-menu';
 
 const MAX_POST_LENGTH = 500;
-const MAX_IMAGES = 4;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+export const MAX_IMAGES = 4;
+export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 // Picker values are prefixed so an interest slug and a community id can never
 // collide inside the one radio group.
@@ -74,15 +74,34 @@ export function DialogCreatePost({
   trigger,
   initialDraft,
   communityId,
+  open: controlledOpen,
+  onOpenChange,
+  initialFiles,
 }: {
-  trigger: React.ReactElement;
+  // Omit when the dialog is opened programmatically via `open`/`onOpenChange`
+  // (e.g. the global drag-and-drop zone).
+  trigger?: React.ReactElement;
   initialDraft?: InitialDraft;
   // Posts into this community instead of the global timeline.
   communityId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  // Already-validated image files to attach on mount (see `useImageDrop`).
+  initialFiles?: File[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (next: boolean) => {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [text, setText] = useState(initialDraft?.content ?? '');
-  const [images, setImages] = useState<PendingImage[]>([]);
+  const [images, setImages] = useState<PendingImage[]>(() =>
+    (initialFiles ?? []).slice(0, MAX_IMAGES).map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    })),
+  );
   const [existingMedia, setExistingMedia] = useState<DraftMediaItem[]>(
     initialDraft?.media ?? [],
   );
@@ -332,7 +351,9 @@ export function DialogCreatePost({
         if (!next) reset();
       }}
     >
-      <DialogTrigger render={trigger} />
+      <Show when={trigger}>
+        {(element) => <DialogTrigger render={element} />}
+      </Show>
       <DialogContent
         showCloseButton={false}
         className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 gap-0 overflow-y-auto p-0 sm:max-w-xl"

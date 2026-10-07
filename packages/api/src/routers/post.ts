@@ -143,16 +143,6 @@ export function buildPostInsertStatements(
   return [insertPost, ...extras] as const;
 }
 
-// Non-personalized "hot" ranking for the global feed: log-dampened
-// engagement (so viral posts don't dominate forever) minus a linear
-// time-decay penalty (so freshness always eventually wins). Computed at
-// read time from existing denormalized counters — no precompute, no cron.
-// Higher RANK_TIME_DECAY_HOURS = engagement matters more relative to age.
-const RANK_TIME_DECAY_HOURS = 12;
-const postAgeHours = sql`extract(epoch from (now() - ${post.createdAt})) / 3600.0`;
-const postEngagement = sql`(${post.likeCount} + ${post.repostCount} + ${post.replyCount})`;
-const rankScore = sql<number>`ln(1 + ${postEngagement}) - (${postAgeHours}) / ${RANK_TIME_DECAY_HOURS}`;
-
 // One IN-query each per page for the viewer's likes/saves/reposts — never a
 // per-post lookup.
 async function viewerEngagement(
@@ -346,77 +336,69 @@ export async function communityAccess(
 }
 
 export const postRouter = router({
+  // Discover: every top-level post, newest first. No ranking — the order is
+  // exactly `createdAt desc`, with `id` as the tiebreaker so the keyset
+  // cursor is stable. Unlike a computed score, both sort keys are immutable,
+  // so pagination never drifts between requests.
   list: publicProcedure
     .input(
       z.object({
         limit: z.number().int().min(1).max(50).default(20),
-        // Keyset cursor: (score, id) of the last item of the previous
-        // page — never OFFSET. Score is computed at read time (see
-        // rankScore above), so this pagination is only approximately
-        // stable across requests (the same trade-off HN/Reddit's "hot"
-        // ranking makes) — acceptable drift for a social feed.
-        cursor: z.object({ score: z.number(), id: z.string() }).nullish(),
+        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const db = createDb();
       const cursor = input.cursor;
-      const { feedExcluded } = await getViewerExclusions(
-        db,
-        ctx.session?.user.id,
-      );
+      const viewerId = ctx.session?.user.id;
+      const { feedExcluded } = await getViewerExclusions(db, viewerId);
 
-      // Phase 1: rank. A computed expression can't reliably drive `where`
-      // and `orderBy` through the relational query builder, so rank with
-      // a plain select first, then hydrate relations in phase 2 — same
-      // two-phase shape as pageEngagedPosts above.
-      const rankedRows = await db
-        .select({ id: post.id, score: rankScore })
-        .from(post)
-        .where(
-          and(
-            isNull(post.replyToPostId),
-            isNull(post.communityId),
-            feedExcluded.size > 0
-              ? notInArray(post.authorId, [...feedExcluded])
-              : undefined,
-            cursor
-              ? or(
-                  sql`${rankScore} < ${cursor.score}`,
-                  and(
-                    sql`${rankScore} = ${cursor.score}`,
-                    lt(post.id, cursor.id),
-                  ),
-                )
-              : undefined,
-          ),
-        )
-        .orderBy(sql`${rankScore} desc`, desc(post.id))
-        .limit(input.limit + 1);
+      const rows = await db.query.post.findMany({
+        where: and(
+          isNull(post.replyToPostId),
+          isNull(post.communityId),
+          feedExcluded.size > 0
+            ? notInArray(post.authorId, [...feedExcluded])
+            : undefined,
+          cursor
+            ? or(
+                lt(post.createdAt, new Date(cursor.createdAt)),
+                and(
+                  eq(post.createdAt, new Date(cursor.createdAt)),
+                  lt(post.id, cursor.id),
+                ),
+              )
+            : undefined,
+        ),
+        orderBy: [desc(post.createdAt), desc(post.id)],
+        limit: input.limit + 1,
+        // Single-phase: the keyset predicate and relations ride in one query,
+        // same as listFollowing.
+        with: postWith,
+      });
 
-      let nextCursor: { score: number; id: string } | null = null;
-      if (rankedRows.length > input.limit) {
-        rankedRows.pop();
-        const last = rankedRows[rankedRows.length - 1]!;
-        nextCursor = { score: last.score, id: last.id };
+      let nextCursor: { createdAt: string; id: string } | null = null;
+      if (rows.length > input.limit) {
+        rows.pop();
+        const last = rows[rows.length - 1]!;
+        nextCursor = { createdAt: last.createdAt.toISOString(), id: last.id };
       }
 
-      // Phase 2: hydrate relations, then restore rank order (IN-queries
-      // don't preserve input order).
-      const items = await hydratePosts(
+      const engagement = await viewerEngagement(
         db,
-        rankedRows.map((row) => row.id),
-        ctx.session?.user.id,
+        viewerId,
+        rows.map((row) => row.id),
       );
 
-      return { items, nextCursor };
+      return { items: stampEngagement(rows, engagement), nextCursor };
     }),
 
   // Full-text search over post content. `websearch_to_tsquery` (not
   // `plainto_tsquery`) parses `"exact phrase"`, `-exclude`, and `OR` the way
   // people actually type into a search box. Ranked by `ts_rank` against the
-  // generated `search_vector` column (GIN-indexed — see the schema), same
-  // two-phase rank-then-hydrate shape as `list` above.
+  // generated `search_vector` column (GIN-indexed — see the schema). A computed
+  // rank can't drive `where` + `orderBy` through the relational query builder,
+  // so it ranks with a plain select first, then hydrates in a second phase.
   search: publicProcedure
     .input(
       z.object({
@@ -492,12 +474,14 @@ export const postRouter = router({
       const viewerId = ctx.session.user.id;
       const cursor = input.cursor;
 
-      const { feedExcluded } = await getViewerExclusions(db, viewerId);
-
-      const followeeRows = await db
-        .select({ followeeId: follow.followeeId })
-        .from(follow)
-        .where(eq(follow.followerId, viewerId));
+      // Independent reads — neither needs the other's result until filtering.
+      const [{ feedExcluded }, followeeRows] = await Promise.all([
+        getViewerExclusions(db, viewerId),
+        db
+          .select({ followeeId: follow.followeeId })
+          .from(follow)
+          .where(eq(follow.followerId, viewerId)),
+      ]);
       const followeeIds = followeeRows
         .map((row) => row.followeeId)
         .filter((id) => !feedExcluded.has(id));
@@ -574,34 +558,39 @@ export const postRouter = router({
     .query(async ({ ctx, input }) => {
       const db = createDb();
 
-      const found = await db.query.post.findFirst({
-        where: eq(post.id, input.id),
-        with: {
-          // `postWith` covers the focused post itself (author, media, link
-          // card, and its quoted post). The detail page adds two relations no
-          // feed needs:
-          ...postWith,
-          // Parent post, when this is a reply — rendered above the focused
-          // post with a thread line.
-          replyTo: { with: postWith },
-          replies: {
-            orderBy: (reply, { asc, desc }) =>
-              input.replySort === 'top'
-                ? [desc(reply.likeCount), desc(reply.createdAt)]
-                : input.replySort === 'oldest'
-                  ? [asc(reply.createdAt), asc(reply.id)]
-                  : [desc(reply.createdAt), desc(reply.id)],
-            with: postWith,
+      const viewerId = ctx.session?.user.id;
+
+      // The exclusions lookup only needs the viewer, so it rides alongside the
+      // post fetch instead of waiting behind it.
+      const [found, { blocked, feedExcluded }] = await Promise.all([
+        db.query.post.findFirst({
+          where: eq(post.id, input.id),
+          with: {
+            // `postWith` covers the focused post itself (author, media, link
+            // card, and its quoted post). The detail page adds two relations no
+            // feed needs:
+            ...postWith,
+            // Parent post, when this is a reply — rendered above the focused
+            // post with a thread line.
+            replyTo: { with: postWith },
+            replies: {
+              orderBy: (reply, { asc, desc }) =>
+                input.replySort === 'top'
+                  ? [desc(reply.likeCount), desc(reply.createdAt)]
+                  : input.replySort === 'oldest'
+                    ? [asc(reply.createdAt), asc(reply.id)]
+                    : [desc(reply.createdAt), desc(reply.id)],
+              with: postWith,
+            },
           },
-        },
-      });
+        }),
+        getViewerExclusions(db, viewerId),
+      ]);
 
       if (!found) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
       }
 
-      const viewerId = ctx.session?.user.id;
-      const { blocked, feedExcluded } = await getViewerExclusions(db, viewerId);
       if (blocked.has(found.authorId)) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
       }
@@ -678,17 +667,30 @@ export const postRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = createDb();
       const postId = crypto.randomUUID();
-      const { blocked } = await getViewerExclusions(db, ctx.session.user.id);
+      // Every lookup the checks below need is a plain read, so they run
+      // together; the checks themselves still run in the original order, so
+      // the same error wins when several would fail.
+      const [{ blocked }, parent, quoted] = await Promise.all([
+        getViewerExclusions(db, ctx.session.user.id),
+        input.replyToPostId
+          ? db.query.post.findFirst({
+              where: eq(post.id, input.replyToPostId),
+              columns: { authorId: true, communityId: true },
+            })
+          : undefined,
+        input.quotedPostId
+          ? db.query.post.findFirst({
+              where: eq(post.id, input.quotedPostId),
+              columns: { authorId: true, communityId: true },
+            })
+          : undefined,
+      ]);
 
       // Replies live in their parent's community; otherwise the composer's.
       let communityId: string | undefined = input.communityId;
 
       let parentAuthorId: string | undefined;
       if (input.replyToPostId) {
-        const parent = await db.query.post.findFirst({
-          where: eq(post.id, input.replyToPostId),
-          columns: { authorId: true, communityId: true },
-        });
         if (!parent) {
           throw new TRPCError({
             code: 'NOT_FOUND',
@@ -707,10 +709,6 @@ export const postRouter = router({
 
       let quotedAuthorId: string | undefined;
       if (input.quotedPostId) {
-        const quoted = await db.query.post.findFirst({
-          where: eq(post.id, input.quotedPostId),
-          columns: { authorId: true, communityId: true },
-        });
         if (!quoted) {
           throw new TRPCError({
             code: 'NOT_FOUND',
@@ -775,22 +773,24 @@ export const postRouter = router({
         }
       });
 
-      if (input.replyToPostId && parentAuthorId) {
-        await notify(db, {
-          recipientId: parentAuthorId,
-          actorId: ctx.session.user.id,
-          type: 'reply',
-          postId: input.replyToPostId,
-        });
-      }
-      if (input.quotedPostId && quotedAuthorId) {
-        await notify(db, {
-          recipientId: quotedAuthorId,
-          actorId: ctx.session.user.id,
-          type: 'repost',
-          postId: input.quotedPostId,
-        });
-      }
+      await Promise.all([
+        input.replyToPostId && parentAuthorId
+          ? notify(db, {
+              recipientId: parentAuthorId,
+              actorId: ctx.session.user.id,
+              type: 'reply',
+              postId: input.replyToPostId,
+            })
+          : undefined,
+        input.quotedPostId && quotedAuthorId
+          ? notify(db, {
+              recipientId: quotedAuthorId,
+              actorId: ctx.session.user.id,
+              type: 'repost',
+              postId: input.quotedPostId,
+            })
+          : undefined,
+      ]);
 
       return { id: postId };
     }),
@@ -811,7 +811,12 @@ export const postRouter = router({
       const viewerId = ctx.session?.user.id;
       const { cursor } = input;
 
-      const access = await communityAccess(db, input.communityId, viewerId);
+      // Independent lookups; a locked-out viewer wastes the cheap exclusions
+      // query, which is worth the saved round trip on the common path.
+      const [access, { feedExcluded }] = await Promise.all([
+        communityAccess(db, input.communityId, viewerId),
+        getViewerExclusions(db, viewerId),
+      ]);
       if (!access) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -821,8 +826,6 @@ export const postRouter = router({
       if (!access.canRead) {
         return { locked: true as const, items: [], nextCursor: null };
       }
-
-      const { feedExcluded } = await getViewerExclusions(db, viewerId);
 
       const rows = await db.query.post.findMany({
         where: and(
@@ -1118,16 +1121,19 @@ export const postRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Post not found' });
       }
 
-      if (deleted.replyToPostId) {
-        await db
-          .update(post)
-          .set({ replyCount: sql`GREATEST(${post.replyCount} - 1, 0)` })
-          .where(eq(post.id, deleted.replyToPostId));
-      }
-      await db
-        .update(userStats)
-        .set({ postCount: sql`GREATEST(${userStats.postCount} - 1, 0)` })
-        .where(eq(userStats.userId, ctx.session.user.id));
+      // Two independent counter decrements.
+      await Promise.all([
+        deleted.replyToPostId
+          ? db
+              .update(post)
+              .set({ replyCount: sql`GREATEST(${post.replyCount} - 1, 0)` })
+              .where(eq(post.id, deleted.replyToPostId))
+          : undefined,
+        db
+          .update(userStats)
+          .set({ postCount: sql`GREATEST(${userStats.postCount} - 1, 0)` })
+          .where(eq(userStats.userId, ctx.session.user.id)),
+      ]);
 
       return { id: deleted.id };
     }),
