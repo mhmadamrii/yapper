@@ -232,14 +232,14 @@ function NotificationRow({
     >
       <div className="flex items-center gap-3">
         <div className="flex w-9 shrink-0 justify-center">{icon}</div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center -space-x-2">
           <For each={notification.actors}>
             {(actor) => (
               <UserAvatar
                 key={actor.id}
                 name={actor.name}
                 image={actor.image}
-                className="size-8"
+                className="ring-background size-8 ring-2"
               />
             )}
           </For>

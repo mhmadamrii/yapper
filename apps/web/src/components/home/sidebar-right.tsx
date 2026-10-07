@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Input } from '@yapper/ui/components/input';
+import { Skeleton } from '@yapper/ui/components/skeleton';
+import { useEffect, useState } from 'react';
+import { For, Match, Show, Switch } from '@/components/control-flow';
+import { useSession } from '@/hooks/use-session';
+import { UserAvatar } from '@/components/user-avatar';
+import { cn } from '@yapper/ui/lib/utils';
+import { useTRPC } from '@/utils/trpc';
+
 import {
   Compass,
   ListFilter,
@@ -9,12 +17,11 @@ import {
   Search,
   TrendingUp,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { For, Show } from '@/components/control-flow';
-import { useSession } from '@/hooks/use-session';
-import { UserAvatar } from '@/components/user-avatar';
-import { cn } from '@yapper/ui/lib/utils';
-import { useTRPC } from '@/utils/trpc';
+
+import {
+  CommunityCover,
+  MemberCount,
+} from '@/routes/(yapper)/-components/community-card';
 
 export function SidebarRight() {
   const { data: session } = useSession();
@@ -50,7 +57,12 @@ export function SidebarRight() {
         <SidebarPeopleSearch />
       </Show>
 
-      {session && <FeedSwitcher />}
+      {session && (
+        <div className="flex flex-col gap-3">
+          <FeedSwitcher />
+          <SidebarCommunities />
+        </div>
+      )}
 
       {/* Logged-in-only recompute control stays visible even with an empty
           snapshot, since that's precisely the state it's meant to fix. */}
@@ -84,16 +96,24 @@ export function SidebarRight() {
             <ol className="flex flex-col gap-2">
               <For each={trending ?? []}>
                 {(topic, i) => (
-                  <li key={topic.hashtag} className="flex gap-3 text-sm">
-                    <span className="text-muted-foreground">{i + 1}.</span>
-                    <span className="flex flex-col">
-                      <span className="font-medium">#{topic.hashtag}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {topic.recentAuthors}{' '}
-                        {topic.recentAuthors === 1 ? 'person' : 'people'}{' '}
-                        posting
+                  <li key={topic.hashtag}>
+                    <Link
+                      to="/search/$trending"
+                      params={{ trending: topic.hashtag }}
+                      className="group flex gap-3 text-sm"
+                    >
+                      <span className="text-muted-foreground">{i + 1}.</span>
+                      <span className="flex flex-col">
+                        <span className="font-medium group-hover:underline">
+                          #{topic.hashtag}
+                        </span>
+                        <span className="text-muted-foreground text-xs group-hover:underline">
+                          {topic.recentAuthors}{' '}
+                          {topic.recentAuthors === 1 ? 'person' : 'people'}{' '}
+                          posting
+                        </span>
                       </span>
-                    </span>
+                    </Link>
                   </li>
                 )}
               </For>
@@ -172,6 +192,69 @@ function FeedSwitcher() {
         More feeds
       </Link>
     </div>
+  );
+}
+
+const SIDEBAR_COMMUNITY_LIMIT = 3;
+
+// The viewer's most recently joined communities, under the feed links. Renders
+// nothing (not even the divider) once loaded with zero communities.
+function SidebarCommunities() {
+  const trpc = useTRPC();
+  const communitiesQuery = useQuery(
+    trpc.community.mine.queryOptions({ limit: SIDEBAR_COMMUNITY_LIMIT }),
+  );
+  const communities = communitiesQuery.data ?? [];
+
+  return (
+    <Show when={communitiesQuery.isPending || communities.length > 0}>
+      <div className="bg-border h-px" />
+      <Switch>
+        <Match when={communitiesQuery.isPending}>
+          <div className="flex flex-col gap-3">
+            <For each={Array.from({ length: SIDEBAR_COMMUNITY_LIMIT })}>
+              {(_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="size-9 shrink-0 rounded-lg" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
+        </Match>
+        <Match when={communities.length > 0}>
+          <div className="flex flex-col gap-1">
+            <For each={communities}>
+              {(c) => (
+                <Link
+                  key={c.id}
+                  to="/communities/$communityId"
+                  params={{ communityId: c.id }}
+                  className="hover:bg-accent flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors"
+                >
+                  <CommunityCover
+                    coverKey={c.coverKey}
+                    name={c.name}
+                    className="size-9 shrink-0 rounded-lg"
+                    width={72}
+                    height={72}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{c.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      <MemberCount count={c.memberCount} />
+                    </p>
+                  </div>
+                </Link>
+              )}
+            </For>
+          </div>
+        </Match>
+      </Switch>
+    </Show>
   );
 }
 

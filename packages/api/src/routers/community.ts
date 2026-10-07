@@ -1,15 +1,15 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
 import { user } from '@yapper/db/schema/auth';
+import { and, asc, desc, eq, gt, ilike, lt, or, sql } from 'drizzle-orm';
+import { z } from 'zod';
+import { getViewerExclusions } from '../lib/social-filters';
+
 import {
   community,
   communityJoinRequest,
   communityMember,
 } from '@yapper/db/schema/community';
-import { and, asc, desc, eq, gt, ilike, lt, or, sql } from 'drizzle-orm';
-import { z } from 'zod';
-
-import { getViewerExclusions } from '../lib/social-filters';
 
 import {
   protectedProcedure,
@@ -206,14 +206,19 @@ export const communityRouter = router({
       };
     }),
 
-  mine: protectedProcedure.query(({ ctx }) =>
-    createDb()
-      .select({ ...summaryColumns, role: communityMember.role })
-      .from(communityMember)
-      .innerJoin(community, eq(community.id, communityMember.communityId))
-      .where(eq(communityMember.userId, ctx.session.user.id))
-      .orderBy(desc(communityMember.joinedAt)),
-  ),
+  // The viewer's joined communities, most recently joined first. `limit` lets
+  // small surfaces (the sidebar) avoid pulling the whole list.
+  mine: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100) }).optional())
+    .query(({ ctx, input }) => {
+      const query = createDb()
+        .select({ ...summaryColumns, role: communityMember.role })
+        .from(communityMember)
+        .innerJoin(community, eq(community.id, communityMember.communityId))
+        .where(eq(communityMember.userId, ctx.session.user.id))
+        .orderBy(desc(communityMember.joinedAt));
+      return input?.limit ? query.limit(input.limit) : query;
+    }),
 
   byId: publicProcedure
     .input(z.object({ id: z.string().min(1) }))
