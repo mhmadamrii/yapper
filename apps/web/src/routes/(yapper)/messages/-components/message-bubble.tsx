@@ -1,25 +1,25 @@
-import type { AppRouter } from '@yapper/api/routers/index';
-import type { inferRouterOutputs } from '@trpc/server';
-
 import { Bubble, BubbleContent } from '@yapper/ui/components/bubble';
 import { UserAvatar } from '@/components/user-avatar';
+import { Match, Switch } from '@/components/control-flow';
 import { timeAgo } from '@/lib/utils';
+import { Check, CheckCheck } from 'lucide-react';
+
+import type { ThreadMessage } from '@/lib/use-send-message';
 
 import {
   Message,
   MessageAvatar,
   MessageContent,
-  MessageFooter,
 } from '@yapper/ui/components/message';
-
-type MessageItem = inferRouterOutputs<AppRouter>['message']['thread']['items'][number]; // prettier-ignore
 
 export function MessageBubble({
   message,
   isOwn,
+  onRetry,
 }: {
-  message: MessageItem;
+  message: ThreadMessage;
   isOwn: boolean;
+  onRetry?: (message: ThreadMessage) => void;
 }) {
   const align = isOwn ? 'end' : 'start';
 
@@ -34,9 +34,41 @@ export function MessageBubble({
       </MessageAvatar>
       <MessageContent>
         <Bubble align={align} variant={isOwn ? 'default' : 'secondary'}>
-          <BubbleContent>{message.body}</BubbleContent>
+          <BubbleContent>
+            {message.body}
+            <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] opacity-70 select-none">
+              <Switch
+                fallback={
+                  <>
+                    <span>{timeAgo(message.createdAt)}</span>
+                    {isOwn ? (
+                      <>
+                        <span>·</span>
+                        <CheckCheck className="size-3.5" aria-label="Sent" />
+                      </>
+                    ) : null}
+                  </>
+                }
+              >
+                <Match when={message.status === 'failed'}>
+                  <span className="font-semibold">Not sent</span>
+                  <span>·</span>
+                  <button
+                    onClick={() => onRetry?.(message)}
+                    className="font-semibold underline"
+                  >
+                    Retry
+                  </button>
+                </Match>
+                <Match when={message.status === 'sending'}>
+                  <span>{timeAgo(message.createdAt)}</span>
+                  <span>·</span>
+                  <Check className="size-3.5" aria-label="Sending" />
+                </Match>
+              </Switch>
+            </span>
+          </BubbleContent>
         </Bubble>
-        <MessageFooter>{timeAgo(message.createdAt)}</MessageFooter>
       </MessageContent>
     </Message>
   );

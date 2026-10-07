@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import { post } from './post';
 import { user } from './auth';
 import { interest } from './interest';
+import { community } from './community';
 
 import { pgTable, text, timestamp, integer, index } from 'drizzle-orm/pg-core';
 
@@ -27,6 +28,12 @@ export const postDraft = pgTable(
     // Unlike replyToPostId, editable on the draft — a topic tag is content,
     // not a structural relation set once at creation.
     interestSlug: text('interest_slug').references(() => interest.slug, {
+      onDelete: 'set null',
+    }),
+    // Target community chosen in the composer. Set null if the community is
+    // deleted — the draft survives as an ordinary one. Membership is checked
+    // at publish time, not here, since it can change after the draft is saved.
+    communityId: text('community_id').references(() => community.id, {
       onDelete: 'set null',
     }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -75,6 +82,10 @@ export const postDraftRelations = relations(postDraft, ({ one, many }) => ({
   replyTo: one(post, {
     fields: [postDraft.replyToPostId],
     references: [post.id],
+  }),
+  community: one(community, {
+    fields: [postDraft.communityId],
+    references: [community.id],
   }),
   media: many(draftMedia),
 }));

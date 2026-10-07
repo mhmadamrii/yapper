@@ -5,14 +5,16 @@ import { UserAvatar } from '@/components/user-avatar';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
+import { Skeleton } from '@yapper/ui/components/skeleton';
 import { ChevronDown, Hash, ImageIcon, Smile, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { For, Show } from '@/components/control-flow';
+import { For, Match, Show, Switch } from '@/components/control-flow';
 import { LinkPreviewCard } from '@/components/home/link-preview-card';
 import { useComposerLinkPreview } from '@/hooks/use-composer-link-preview';
 import { GifPickerButton } from './gif-picker-button';
 import { MentionTextarea } from './mention-textarea';
+import { CommunityCover } from './community-card';
 
 import {
   Dialog,
@@ -23,14 +25,27 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@yapper/ui/components/dropdown-menu';
 
 const MAX_POST_LENGTH = 500;
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+// Picker values are prefixed so an interest slug and a community id can never
+// collide inside the one radio group.
+const INTEREST_PREFIX = 'interest:';
+const COMMUNITY_PREFIX = 'community:';
+
+export interface PickedCommunity {
+  id: string;
+  name: string;
+  coverKey: string | null;
+}
 
 interface PendingImage {
   file: File;
@@ -52,6 +67,7 @@ export interface InitialDraft {
   content: string;
   media: DraftMediaItem[];
   interestSlug?: string | null;
+  community?: PickedCommunity | null;
 }
 
 export function DialogCreatePost({
@@ -73,6 +89,11 @@ export function DialogCreatePost({
   const [selectedInterest, setSelectedInterest] = useState<string | null>(
     initialDraft?.interestSlug ?? null,
   );
+  // A joined community picked in the dropdown. Mutually exclusive with an
+  // interest: community posts are isolated from the interest/hashtag surfaces.
+  const [selectedCommunity, setSelectedCommunity] =
+    useState<PickedCommunity | null>(initialDraft?.community ?? null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const linkPreview = useComposerLinkPreview(text);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +123,42 @@ export function DialogCreatePost({
       return aMine - bMine;
     });
   }, [interestListQuery.data, myInterestsQuery.data]);
+  // Only fetched once the picker is opened — most composer sessions never
+  // touch it, and the dialog is mounted on every page. Skipped entirely when
+  // the composer is already pinned to a community by the `communityId` prop.
+  const joinedCommunitiesQuery = useQuery(
+    trpc.community.mine.queryOptions(undefined, {
+      enabled: !!session && pickerOpen && !communityId,
+    }),
+  );
+  const targetCommunityId = communityId ?? selectedCommunity?.id;
+  const pickerValue = selectedCommunity
+    ? `${COMMUNITY_PREFIX}${selectedCommunity.id}`
+    : selectedInterest
+      ? `${INTEREST_PREFIX}${selectedInterest}`
+      : '';
+
+  const handlePickerChange = (value: string) => {
+    if (value.startsWith(COMMUNITY_PREFIX)) {
+      const id = value.slice(COMMUNITY_PREFIX.length);
+      const picked = joinedCommunitiesQuery.data?.find((c) => c.id === id);
+      if (!picked) return;
+      setSelectedCommunity({
+        id: picked.id,
+        name: picked.name,
+        coverKey: picked.coverKey,
+      });
+      setSelectedInterest(null);
+      return;
+    }
+    setSelectedCommunity(null);
+    setSelectedInterest(
+      value.startsWith(INTEREST_PREFIX)
+        ? value.slice(INTEREST_PREFIX.length)
+        : null,
+    );
+  };
+
   const selectedInterestName = interestListQuery.data?.find(
     (i) => i.slug === selectedInterest,
   )?.name;
@@ -120,6 +177,7 @@ export function DialogCreatePost({
     setImages([]);
     setExistingMedia(initialDraft?.media ?? []);
     setSelectedInterest(initialDraft?.interestSlug ?? null);
+    setSelectedCommunity(initialDraft?.community ?? null);
     linkPreview.reset();
   };
 
@@ -190,7 +248,7 @@ export function DialogCreatePost({
         // so what gets stored matches what the composer showed.
         linkUrl: media.length > 0 ? undefined : linkPreview.linkUrl,
         interestSlug: selectedInterest ?? undefined,
-        communityId,
+        communityId: targetCommunityId,
       });
 
       // Post exists now — that's the goal. Draft cleanup and cache
@@ -209,9 +267,13 @@ export function DialogCreatePost({
       queryClient.invalidateQueries({
         queryKey: trpc.post.list.infiniteQueryKey(),
       });
-      if (communityId) {
+      if (targetCommunityId) {
+        // Joined-community posts also surface in the Following feed.
         queryClient.invalidateQueries({
           queryKey: trpc.post.byCommunity.pathKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: trpc.post.listFollowing.infiniteQueryKey(),
         });
       }
 
@@ -235,12 +297,14 @@ export function DialogCreatePost({
           content: text.trim(),
           media,
           interestSlug: selectedInterest,
+          communityId: selectedCommunity?.id ?? null,
         });
       } else {
         await createDraft.mutateAsync({
           content: text.trim(),
           media,
           interestSlug: selectedInterest ?? undefined,
+          communityId: selectedCommunity?.id,
         });
       }
       await queryClient.invalidateQueries({
@@ -370,34 +434,92 @@ export function DialogCreatePost({
         </div>
 
         <div className="px-4 pb-3">
-          <DropdownMenu>
+          <DropdownMenu open={pickerOpen} onOpenChange={setPickerOpen}>
             <DropdownMenuTrigger
               render={
                 <button className="bg-secondary text-secondary-foreground hover:bg-accent flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors" />
               }
             >
-              <Hash className="size-4" />
-              {selectedInterestName ?? 'General'}
+              <Show
+                when={selectedCommunity}
+                fallback={
+                  <>
+                    <Hash className="size-4" />
+                    {selectedInterestName ?? 'General'}
+                  </>
+                }
+              >
+                {(picked) => (
+                  <>
+                    <CommunityCover
+                      coverKey={picked.coverKey}
+                      name={picked.name}
+                      className="size-5 shrink-0 rounded"
+                      width={40}
+                      height={40}
+                    />
+                    <span className="max-w-40 truncate">{picked.name}</span>
+                  </>
+                )}
+              </Show>
               <ChevronDown className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="max-h-72 w-56">
               <DropdownMenuRadioGroup
-                value={selectedInterest ?? ''}
-                onValueChange={(value) =>
-                  setSelectedInterest(value === '' ? null : value)
-                }
+                value={pickerValue}
+                onValueChange={handlePickerChange}
               >
                 <DropdownMenuRadioItem value="">General</DropdownMenuRadioItem>
                 <For each={interestOptions}>
                   {(option) => (
                     <DropdownMenuRadioItem
                       key={option.slug}
-                      value={option.slug}
+                      value={`${INTEREST_PREFIX}${option.slug}`}
                     >
                       {option.name}
                     </DropdownMenuRadioItem>
                   )}
                 </For>
+                <Show when={!communityId}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Your communities</DropdownMenuLabel>
+                  <Switch>
+                    <Match when={joinedCommunitiesQuery.isPending}>
+                      <CommunityOptionsSkeleton />
+                    </Match>
+                    <Match when={joinedCommunitiesQuery.error}>
+                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                        Could not load communities.
+                      </p>
+                    </Match>
+                    <Match
+                      when={(joinedCommunitiesQuery.data?.length ?? 0) > 0}
+                    >
+                      <For each={joinedCommunitiesQuery.data ?? []}>
+                        {(c) => (
+                          <DropdownMenuRadioItem
+                            key={c.id}
+                            value={`${COMMUNITY_PREFIX}${c.id}`}
+                          >
+                            <CommunityCover
+                              coverKey={c.coverKey}
+                              name={c.name}
+                              className="size-5 shrink-0 rounded"
+                              width={40}
+                              height={40}
+                            />
+                            <span className="truncate">{c.name}</span>
+                          </DropdownMenuRadioItem>
+                        )}
+                      </For>
+                    </Match>
+                    <Match when={true}>
+                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                        You haven't joined any communities.
+                      </p>
+                    </Match>
+                  </Switch>
+                </Show>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -455,6 +577,21 @@ export function DialogCreatePost({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CommunityOptionsSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 px-2 py-1.5">
+      <For each={[0, 1, 2]}>
+        {(i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Skeleton className="size-5 shrink-0 rounded" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        )}
+      </For>
+    </div>
   );
 }
 

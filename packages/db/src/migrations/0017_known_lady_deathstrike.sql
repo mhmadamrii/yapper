@@ -1,0 +1,2 @@
+ALTER TABLE "post_draft" ADD COLUMN "community_id" text;--> statement-breakpoint
+ALTER TABLE "post_draft" ADD CONSTRAINT "post_draft_community_id_community_id_fk" FOREIGN KEY ("community_id") REFERENCES "public"."community"("id") ON DELETE set null ON UPDATE no action;

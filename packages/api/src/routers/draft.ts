@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { getViewerExclusions } from '../lib/social-filters';
 import { notify } from '../lib/notifications';
 import { protectedProcedure, router } from '../index';
-import { buildPostInsertStatements, mediaInput } from './post';
+import { buildPostInsertStatements, communityAccess, mediaInput } from './post';
 
 function draftNeedsContentOrMedia(content: string, media: unknown[]) {
   if (content.trim().length === 0 && media.length === 0) {
@@ -29,6 +29,7 @@ export const draftRouter = router({
         media: {
           orderBy: (media, { asc }) => [asc(media.position)],
         },
+        community: { columns: { id: true, name: true, coverKey: true } },
         replyTo: {
           columns: { id: true, content: true },
           with: {
@@ -53,6 +54,7 @@ export const draftRouter = router({
         media: z.array(mediaInput).max(4).default([]),
         replyToPostId: z.string().min(1).optional(),
         interestSlug: z.string().min(1).optional(),
+        communityId: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -67,6 +69,7 @@ export const draftRouter = router({
         content: input.content,
         replyToPostId: input.replyToPostId,
         interestSlug: input.interestSlug,
+        communityId: input.communityId,
       };
 
       if (input.media.length > 0) {
@@ -93,12 +96,13 @@ export const draftRouter = router({
       return { id: draftId };
     }),
 
-  // Content/media/interest only — a draft's replyToPostId is set once at
-  // creation and doesn't change on edit. `interestSlug` is nullable rather
-  // than optional (like `content`, always sent in full) so picking "General"
-  // explicitly clears a previously-set topic instead of leaving it untouched
-  // — drizzle's `.set()` skips `undefined` fields but honors an explicit
-  // `null`.
+  // Content/media/interest/community only — a draft's replyToPostId is set
+  // once at creation and doesn't change on edit. `interestSlug` is nullable
+  // rather than optional (like `content`, always sent in full) so picking
+  // "General" explicitly clears a previously-set topic instead of leaving it
+  // untouched — drizzle's `.set()` skips `undefined` fields but honors an
+  // explicit `null`. `communityId` follows the same rule, except omitting it
+  // leaves the stored value alone (reply drafts never send it).
   update: protectedProcedure
     .input(
       z.object({
@@ -106,6 +110,7 @@ export const draftRouter = router({
         content: z.string().max(300),
         media: z.array(mediaInput).max(4).default([]),
         interestSlug: z.string().min(1).nullable(),
+        communityId: z.string().min(1).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -114,7 +119,11 @@ export const draftRouter = router({
       const db = createDb();
       const updated = await db
         .update(postDraft)
-        .set({ content: input.content, interestSlug: input.interestSlug })
+        .set({
+          content: input.content,
+          interestSlug: input.interestSlug,
+          communityId: input.communityId,
+        })
         .where(
           and(
             eq(postDraft.id, input.id),
@@ -197,11 +206,14 @@ export const draftRouter = router({
         });
       }
 
+      // Replies live in their parent's community, same rule as post.create.
+      let communityId: string | undefined = draft.communityId ?? undefined;
+
       let parentAuthorId: string | undefined;
       if (draft.replyToPostId) {
         const parent = await db.query.post.findFirst({
           where: eq(post.id, draft.replyToPostId),
-          columns: { authorId: true },
+          columns: { authorId: true, communityId: true },
         });
         if (!parent) {
           throw new TRPCError({
@@ -217,6 +229,22 @@ export const draftRouter = router({
           });
         }
         parentAuthorId = parent.authorId;
+        communityId = parent.communityId ?? undefined;
+      }
+
+      // Membership can lapse between saving and publishing a draft.
+      if (communityId) {
+        const access = await communityAccess(
+          db,
+          communityId,
+          ctx.session.user.id,
+        );
+        if (!access?.isMember) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Join this community to post in it',
+          });
+        }
       }
 
       const postId = crypto.randomUUID();
@@ -236,6 +264,7 @@ export const draftRouter = router({
           })),
           replyToPostId: draft.replyToPostId ?? undefined,
           interestSlug: draft.interestSlug ?? undefined,
+          communityId,
         });
         for (const statement of statements) {
           await statement;

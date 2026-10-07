@@ -98,6 +98,8 @@ function DraftsPage() {
               id: draft.id,
               content: draft.content,
               media,
+              interestSlug: draft.interestSlug,
+              community: draft.community,
             };
             const replyTarget: ReplyTarget | null = draft.replyTo
               ? {

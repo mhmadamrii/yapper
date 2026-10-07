@@ -19,15 +19,11 @@ export const Route = createFileRoute('/(yapper)/search/')({
 });
 
 function ExplorePage() {
-  const { data: session } = useSession();
   const trpc = useTRPC();
+  const { data: session } = useSession();
 
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(query.trim()), 250);
-    return () => clearTimeout(id);
-  }, [query]);
 
   const peopleQuery = useQuery(
     trpc.user.search.queryOptions(
@@ -41,6 +37,11 @@ function ExplorePage() {
       { enabled: debounced.length > 0 },
     ),
   );
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
 
   return (
     <main className="border-border w-full max-w-[640px] border-x">

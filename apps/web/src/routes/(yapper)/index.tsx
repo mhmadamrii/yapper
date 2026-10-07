@@ -7,10 +7,6 @@ import { motion } from 'motion/react';
 import { PostCard } from '@/components/home/post-card';
 import { WhoToFollow } from '@/components/home/who-to-follow';
 import { UserAvatar } from '@/components/user-avatar';
-import {
-  interstitialSlotNumber,
-  isInterstitialSlot,
-} from '@/lib/feed-interstitials';
 import { useSession } from '@/hooks/use-session';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
@@ -18,6 +14,11 @@ import { DialogCreatePost } from '@/routes/(yapper)/-components/dialog-create-po
 import { useTRPC } from '@/utils/trpc';
 import { seo } from '@/lib/seo';
 import { cn } from '@yapper/ui/lib/utils';
+
+import {
+  interstitialSlotNumber,
+  isInterstitialSlot,
+} from '@/lib/feed-interstitials';
 
 export const Route = createFileRoute('/(yapper)/')({
   // `?feed=following` selects the Following tab; absent means Discover. Lives
@@ -36,25 +37,15 @@ function HomeComponent() {
 
   const tabs = session ? ['Discover', 'Following'] : ['Discover', 'Feeds ✨'];
 
-  const { feed } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
-  const activeTab = feed === 'following' ? 1 : 0;
-  const setActiveTab = (i: number) =>
-    navigate({ search: i === 1 ? { feed: 'following' } : {} });
-  const showFollowing = !!session && activeTab === 1;
-
   // The logo/hashtag row is only shown at the top of the feed: it collapses
   // on scroll-down and stays hidden until the page is back near the top.
   const [logoBarVisible, setLogoBarVisible] = useState(true);
 
-  useEffect(() => {
-    const onScroll = () => {
-      setLogoBarVisible(window.scrollY < 40);
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const { feed } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const activeTab = feed === 'following' ? 1 : 0;
+  const setActiveTab = (i: number) => navigate({ search: i === 1 ? { feed: 'following' } : {} }); // prettier-ignore
+  const showFollowing = !!session && activeTab === 1;
 
   const discoverQuery = useInfiniteQuery(
     trpc.post.list.infiniteQueryOptions(
@@ -82,13 +73,22 @@ function HomeComponent() {
   const posts = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   useEffect(() => {
+    const onScroll = () => {
+      setLogoBarVisible(window.scrollY < 40);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
     if (inView && postsQuery.hasNextPage && !postsQuery.isFetchingNextPage) {
       postsQuery.fetchNextPage();
     }
   }, [inView, postsQuery.hasNextPage, postsQuery.isFetchingNextPage]);
 
   return (
-    <main className="border-border min-h-svh w-full max-w-[640px] border-x">
+    <main className="border-border min-h-svh w-full max-w-160 border-x">
       <header className="bg-background/80 border-border sticky top-0 z-10 border-b backdrop-blur">
         <Show when={session}>
           <motion.div

@@ -2,6 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { For, Show } from '@/components/control-flow';
 import { useTRPC } from '@/utils/trpc';
+import { useSendMessage, type ThreadMessage } from '@/lib/use-send-message';
 import { MessageBubble } from './message-bubble';
 
 import {
@@ -21,6 +22,7 @@ export function ConversationThread({
   currentUserId: string | undefined;
 }) {
   const trpc = useTRPC();
+  const { retryMessage } = useSendMessage(conversationId);
 
   const threadQuery = useInfiniteQuery(
     trpc.message.thread.infiniteQueryOptions(
@@ -39,7 +41,7 @@ export function ConversationThread({
     threadQuery.data?.pages
       .slice()
       .reverse()
-      .flatMap((page) => page.items) ?? [];
+      .flatMap((page) => page.items as ThreadMessage[]) ?? [];
 
   return (
     <MessageScrollerProvider autoScroll defaultScrollPosition="end">
@@ -68,6 +70,7 @@ export function ConversationThread({
                   <MessageBubble
                     message={message}
                     isOwn={message.sender.id === currentUserId}
+                    onRetry={retryMessage}
                   />
                 </MessageScrollerItem>
               )}

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from '@/utils/trpc';
 import { getServerUrl } from './server-url';
+import { isTempMessage } from './use-send-message';
 
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
@@ -52,9 +53,23 @@ export function useConversationStream(conversationId: string | undefined) {
           if (old.pages[0]!.items.some((m) => m.id === incoming.id)) {
             return old;
           }
-          const pages = old.pages.map((page, i) =>
-            i === 0 ? { ...page, items: [...page.items, incoming] } : page,
+          // Our own message echoed back: swap it in for the pending optimistic
+          // bubble (same sender + body) instead of rendering both.
+          const pendingIndex = old.pages[0]!.items.findIndex(
+            (m) =>
+              isTempMessage(m.id) &&
+              m.senderId === incoming.senderId &&
+              m.body === incoming.body,
           );
+          const pages = old.pages.map((page, i) => {
+            if (i !== 0) return page;
+            if (pendingIndex === -1) {
+              return { ...page, items: [...page.items, incoming] };
+            }
+            const items = page.items.slice();
+            items[pendingIndex] = incoming;
+            return { ...page, items };
+          });
           return { ...old, pages };
         },
       );

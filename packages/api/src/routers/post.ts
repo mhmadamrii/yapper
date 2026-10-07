@@ -320,7 +320,7 @@ async function pageEngagedPosts(
 
 // Whether `userId` may see/post in `communityId`: public communities are open
 // to read; private ones need membership. Posting always needs membership.
-async function communityAccess(
+export async function communityAccess(
   db: ReturnType<typeof createDb>,
   communityId: string,
   userId: string | undefined,
