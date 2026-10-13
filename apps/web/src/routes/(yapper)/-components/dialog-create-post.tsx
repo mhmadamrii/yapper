@@ -150,6 +150,16 @@ export function DialogCreatePost({
       enabled: !!session && pickerOpen && !communityId,
     }),
   );
+  // Opened from inside a community: the target is fixed, so the picker is
+  // replaced by a read-only label. `byId` is the same query the community page
+  // already ran, so this is normally a cache hit rather than a new request.
+  const pinnedCommunityQuery = useQuery(
+    trpc.community.byId.queryOptions(
+      { id: communityId ?? '' },
+      { enabled: !!communityId && open },
+    ),
+  );
+  const pinnedCommunity = pinnedCommunityQuery.data;
   const targetCommunityId = communityId ?? selectedCommunity?.id;
   const pickerValue = selectedCommunity
     ? `${COMMUNITY_PREFIX}${selectedCommunity.id}`
@@ -316,14 +326,14 @@ export function DialogCreatePost({
           content: text.trim(),
           media,
           interestSlug: selectedInterest,
-          communityId: selectedCommunity?.id ?? null,
+          communityId: targetCommunityId ?? null,
         });
       } else {
         await createDraft.mutateAsync({
           content: text.trim(),
           media,
           interestSlug: selectedInterest ?? undefined,
-          communityId: selectedCommunity?.id,
+          communityId: targetCommunityId,
         });
       }
       await queryClient.invalidateQueries({
@@ -455,95 +465,127 @@ export function DialogCreatePost({
         </div>
 
         <div className="px-4 pb-3">
-          <DropdownMenu open={pickerOpen} onOpenChange={setPickerOpen}>
-            <DropdownMenuTrigger
-              render={
-                <button className="bg-secondary text-secondary-foreground hover:bg-accent flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors" />
-              }
-            >
-              <Show
-                when={selectedCommunity}
-                fallback={
-                  <>
-                    <Hash className="size-4" />
-                    {selectedInterestName ?? 'General'}
-                  </>
+          <Show
+            when={!communityId}
+            fallback={
+              <div className="bg-secondary text-secondary-foreground flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium">
+                <Show
+                  when={pinnedCommunity}
+                  fallback={
+                    <>
+                      <Skeleton className="size-5 rounded" />
+                      <Skeleton className="h-4 w-24" />
+                    </>
+                  }
+                >
+                  {(c) => (
+                    <>
+                      <CommunityCover
+                        coverKey={c.coverKey}
+                        name={c.name}
+                        className="size-5 shrink-0 rounded"
+                        width={40}
+                        height={40}
+                      />
+                      <span className="max-w-60 truncate">{c.name}</span>
+                    </>
+                  )}
+                </Show>
+              </div>
+            }
+          >
+            <DropdownMenu open={pickerOpen} onOpenChange={setPickerOpen}>
+              <DropdownMenuTrigger
+                render={
+                  <button className="bg-secondary text-secondary-foreground hover:bg-accent flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors" />
                 }
               >
-                {(picked) => (
-                  <>
-                    <CommunityCover
-                      coverKey={picked.coverKey}
-                      name={picked.name}
-                      className="size-5 shrink-0 rounded"
-                      width={40}
-                      height={40}
-                    />
-                    <span className="max-w-40 truncate">{picked.name}</span>
-                  </>
-                )}
-              </Show>
-              <ChevronDown className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-72 w-56">
-              <DropdownMenuRadioGroup
-                value={pickerValue}
-                onValueChange={handlePickerChange}
-              >
-                <DropdownMenuRadioItem value="">General</DropdownMenuRadioItem>
-                <For each={interestOptions}>
-                  {(option) => (
-                    <DropdownMenuRadioItem
-                      key={option.slug}
-                      value={`${INTEREST_PREFIX}${option.slug}`}
-                    >
-                      {option.name}
-                    </DropdownMenuRadioItem>
+                <Show
+                  when={selectedCommunity}
+                  fallback={
+                    <>
+                      <Hash className="size-4" />
+                      {selectedInterestName ?? 'General'}
+                    </>
+                  }
+                >
+                  {(picked) => (
+                    <>
+                      <CommunityCover
+                        coverKey={picked.coverKey}
+                        name={picked.name}
+                        className="size-5 shrink-0 rounded"
+                        width={40}
+                        height={40}
+                      />
+                      <span className="max-w-40 truncate">{picked.name}</span>
+                    </>
                   )}
-                </For>
-                <Show when={!communityId}>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Your communities</DropdownMenuLabel>
-                  <Switch>
-                    <Match when={joinedCommunitiesQuery.isPending}>
-                      <CommunityOptionsSkeleton />
-                    </Match>
-                    <Match when={joinedCommunitiesQuery.error}>
-                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
-                        Could not load communities.
-                      </p>
-                    </Match>
-                    <Match
-                      when={(joinedCommunitiesQuery.data?.length ?? 0) > 0}
-                    >
-                      <For each={joinedCommunitiesQuery.data ?? []}>
-                        {(c) => (
-                          <DropdownMenuRadioItem
-                            key={c.id}
-                            value={`${COMMUNITY_PREFIX}${c.id}`}
-                          >
-                            <CommunityCover
-                              coverKey={c.coverKey}
-                              name={c.name}
-                              className="size-5 shrink-0 rounded"
-                              width={40}
-                              height={40}
-                            />
-                            <span className="truncate">{c.name}</span>
-                          </DropdownMenuRadioItem>
-                        )}
-                      </For>
-                    </Match>
-                    <Match when={true}>
-                      <p className="text-muted-foreground px-2 py-1.5 text-sm">
-                        You haven't joined any communities.
-                      </p>
-                    </Match>
-                  </Switch>
                 </Show>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <ChevronDown className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-72 w-56">
+                <DropdownMenuRadioGroup
+                  value={pickerValue}
+                  onValueChange={handlePickerChange}
+                >
+                  <DropdownMenuRadioItem value="">
+                    General
+                  </DropdownMenuRadioItem>
+                  <For each={interestOptions}>
+                    {(option) => (
+                      <DropdownMenuRadioItem
+                        key={option.slug}
+                        value={`${INTEREST_PREFIX}${option.slug}`}
+                      >
+                        {option.name}
+                      </DropdownMenuRadioItem>
+                    )}
+                  </For>
+                  <Show when={!communityId}>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Your communities</DropdownMenuLabel>
+                    <Switch>
+                      <Match when={joinedCommunitiesQuery.isPending}>
+                        <CommunityOptionsSkeleton />
+                      </Match>
+                      <Match when={joinedCommunitiesQuery.error}>
+                        <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                          Could not load communities.
+                        </p>
+                      </Match>
+                      <Match
+                        when={(joinedCommunitiesQuery.data?.length ?? 0) > 0}
+                      >
+                        <For each={joinedCommunitiesQuery.data ?? []}>
+                          {(c) => (
+                            <DropdownMenuRadioItem
+                              key={c.id}
+                              value={`${COMMUNITY_PREFIX}${c.id}`}
+                            >
+                              <CommunityCover
+                                coverKey={c.coverKey}
+                                name={c.name}
+                                className="size-5 shrink-0 rounded"
+                                width={40}
+                                height={40}
+                              />
+                              <span className="truncate">{c.name}</span>
+                            </DropdownMenuRadioItem>
+                          )}
+                        </For>
+                      </Match>
+                      <Match when={true}>
+                        <p className="text-muted-foreground px-2 py-1.5 text-sm">
+                          You haven't joined any communities.
+                        </p>
+                      </Match>
+                    </Switch>
+                  </Show>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Show>
         </div>
 
         <div className="border-border flex items-center justify-between border-t px-4 py-3">

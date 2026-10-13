@@ -1,0 +1,1 @@
+ALTER TABLE "community_member" ADD COLUMN "pin_position" integer;

@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { Input } from '@yapper/ui/components/input';
-import { ArrowLeft, Plus, Search } from 'lucide-react';
+import { ArrowLeft, Pin, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { useSession } from '@/hooks/use-session';
@@ -10,6 +10,7 @@ import { seo } from '@/lib/seo';
 import { useTRPC } from '@/utils/trpc';
 import { CommunityListSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
 import { CommunityRow } from '@/routes/(yapper)/-components/community-card';
+import { DialogPinCommunities } from '@/routes/(yapper)/-components/dialog-pin-communities';
 import { DialogCreateCommunity } from '@/routes/(yapper)/-components/dialog-create-community';
 
 export const Route = createFileRoute('/(yapper)/communities/')({
@@ -51,16 +52,28 @@ function CommunitiesPage() {
           </Button>
           <h1 className="font-bold">Communities</h1>
         </div>
-        <Show when={session?.user.emailVerified}>
-          <DialogCreateCommunity
-            trigger={
-              <Button size="sm" className="rounded-full">
-                <Plus className="size-4" />
-                Create
-              </Button>
-            }
-          />
-        </Show>
+        <div className="flex items-center gap-2">
+          <Show when={session}>
+            <DialogPinCommunities
+              trigger={
+                <Button variant="secondary" size="sm" className="rounded-full">
+                  <Pin className="size-4" />
+                  Pin
+                </Button>
+              }
+            />
+          </Show>
+          <Show when={session?.user.emailVerified}>
+            <DialogCreateCommunity
+              trigger={
+                <Button size="sm" className="rounded-full">
+                  <Plus className="size-4" />
+                  Create
+                </Button>
+              }
+            />
+          </Show>
+        </div>
       </header>
 
       <div className="p-4">

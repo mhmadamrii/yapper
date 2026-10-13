@@ -1,7 +1,18 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
 import { user } from '@yapper/db/schema/auth';
-import { and, asc, desc, eq, gt, ilike, lt, or, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  ilike,
+  isNotNull,
+  lt,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { z } from 'zod';
 import { getViewerExclusions } from '../lib/social-filters';
 
@@ -20,6 +31,7 @@ import {
 
 const PAGE_SIZE = 20;
 const MAX_COMMUNITIES_PER_OWNER = 5;
+export const MAX_PINNED_COMMUNITIES = 3;
 
 const summaryColumns = {
   id: community.id,
@@ -212,12 +224,89 @@ export const communityRouter = router({
     .input(z.object({ limit: z.number().int().min(1).max(100) }).optional())
     .query(({ ctx, input }) => {
       const query = createDb()
-        .select({ ...summaryColumns, role: communityMember.role })
+        .select({
+          ...summaryColumns,
+          role: communityMember.role,
+          pinPosition: communityMember.pinPosition,
+        })
         .from(communityMember)
         .innerJoin(community, eq(community.id, communityMember.communityId))
         .where(eq(communityMember.userId, ctx.session.user.id))
         .orderBy(desc(communityMember.joinedAt));
       return input?.limit ? query.limit(input.limit) : query;
+    }),
+
+  // What the right sidebar shows: the viewer's pinned communities in pin
+  // order, or — when nothing is pinned — their most recently joined ones.
+  // One query: pinned rows sort first (nulls last), so if any pin exists they
+  // are all inside the top MAX_PINNED_COMMUNITIES.
+  sidebar: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await createDb()
+      .select({
+        ...summaryColumns,
+        pinPosition: communityMember.pinPosition,
+      })
+      .from(communityMember)
+      .innerJoin(community, eq(community.id, communityMember.communityId))
+      .where(eq(communityMember.userId, ctx.session.user.id))
+      .orderBy(
+        sql`${communityMember.pinPosition} asc nulls last`,
+        desc(communityMember.joinedAt),
+      )
+      .limit(MAX_PINNED_COMMUNITIES);
+    return rows.some((row) => row.pinPosition !== null)
+      ? rows.filter((row) => row.pinPosition !== null)
+      : rows;
+  }),
+
+  // Replaces the viewer's whole pin set. `ids` is the new order; anything not
+  // listed becomes unpinned. Done in one transaction so a bad id can't leave
+  // the viewer with a half-applied set.
+  setPins: protectedProcedure
+    .input(
+      z.object({
+        ids: z
+          .array(z.string().min(1))
+          .max(MAX_PINNED_COMMUNITIES)
+          .refine((ids) => new Set(ids).size === ids.length, {
+            message: 'Duplicate communities',
+          }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = createDb();
+      const me = ctx.session.user.id;
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(communityMember)
+          .set({ pinPosition: null })
+          .where(
+            and(
+              eq(communityMember.userId, me),
+              isNotNull(communityMember.pinPosition),
+            ),
+          );
+        for (const [position, communityId] of input.ids.entries()) {
+          const updated = await tx
+            .update(communityMember)
+            .set({ pinPosition: position })
+            .where(
+              and(
+                eq(communityMember.userId, me),
+                eq(communityMember.communityId, communityId),
+              ),
+            )
+            .returning({ communityId: communityMember.communityId });
+          if (updated.length === 0) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'You can only pin communities you have joined',
+            });
+          }
+        }
+      });
+      return { ids: input.ids };
     }),
 
   byId: publicProcedure

@@ -127,6 +127,13 @@
       "when": 1791337893854,
       "tag": "0017_known_lady_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791860332093,
+      "tag": "0018_late_hairball",
+      "breakpoints": true
     }
   ]
 }

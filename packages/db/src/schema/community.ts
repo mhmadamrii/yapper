@@ -54,6 +54,9 @@ export const communityMember = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     role: text('role').$type<CommunityRole>().default('member').notNull(),
     joinedAt: timestamp('joined_at').defaultNow().notNull(),
+    // Per-user sidebar pin: null = not pinned, otherwise the 0-based display
+    // slot (at most 3 pinned per user, enforced in `community.setPins`).
+    pinPosition: integer('pin_position'),
   },
   (table) => [
     primaryKey({ columns: [table.communityId, table.userId] }),

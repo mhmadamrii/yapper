@@ -197,13 +197,12 @@ function FeedSwitcher() {
 
 const SIDEBAR_COMMUNITY_LIMIT = 3;
 
-// The viewer's most recently joined communities, under the feed links. Renders
+// The viewer's pinned communities (or, with none pinned, their most recently
+// joined) under the feed links. Renders
 // nothing (not even the divider) once loaded with zero communities.
 function SidebarCommunities() {
   const trpc = useTRPC();
-  const communitiesQuery = useQuery(
-    trpc.community.mine.queryOptions({ limit: SIDEBAR_COMMUNITY_LIMIT }),
-  );
+  const communitiesQuery = useQuery(trpc.community.sidebar.queryOptions());
   const communities = communitiesQuery.data ?? [];
 
   return (
