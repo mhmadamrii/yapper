@@ -239,7 +239,7 @@ export const draftRouter = router({
           communityId,
           ctx.session.user.id,
         );
-        if (!access?.isMember) {
+        if (!access?.canPost) {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Join this community to post in it',

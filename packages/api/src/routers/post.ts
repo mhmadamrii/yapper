@@ -11,7 +11,7 @@ import { extractHashtags } from '../lib/hashtags';
 import { getViewerExclusions } from '../lib/social-filters';
 import { getOrCreateLinkPreview, normalizeUrl } from '../lib/unfurl';
 import { notify } from '../lib/notifications';
-import { protectedProcedure, publicProcedure, router } from '../index';
+import { isOwner, protectedProcedure, publicProcedure, router } from '../index';
 
 import {
   and,
@@ -310,29 +310,86 @@ async function pageEngagedPosts(
 
 // Whether `userId` may see/post in `communityId`: public communities are open
 // to read; private ones need membership. Posting always needs membership.
+// The owner bypasses both, so moderation can open and reply to any post.
 export async function communityAccess(
   db: ReturnType<typeof createDb>,
   communityId: string,
   userId: string | undefined,
 ) {
-  const found = await db.query.community.findFirst({
-    where: eq(community.id, communityId),
-    columns: { visibility: true },
-  });
+  const [found, member, owner] = await Promise.all([
+    db.query.community.findFirst({
+      where: eq(community.id, communityId),
+      columns: { visibility: true },
+    }),
+    userId
+      ? db.query.communityMember.findFirst({
+          where: and(
+            eq(communityMember.communityId, communityId),
+            eq(communityMember.userId, userId),
+          ),
+          columns: { userId: true },
+        })
+      : undefined,
+    userId ? isOwner(userId) : false,
+  ]);
   if (!found) return null;
-  const member = userId
-    ? await db.query.communityMember.findFirst({
-        where: and(
-          eq(communityMember.communityId, communityId),
-          eq(communityMember.userId, userId),
-        ),
-        columns: { userId: true },
-      })
-    : undefined;
+  const canPost = !!member || owner;
   return {
-    isMember: !!member,
-    canRead: found.visibility === 'public' || !!member,
+    canPost,
+    canRead: found.visibility === 'public' || canPost,
   };
+}
+
+// One keyset page of a community's posts, newest first, hydrated for the post
+// card. Access checks are the caller's job: the community feed gates on
+// membership, the moderation view bypasses it for the owner.
+export async function pageCommunityPosts(
+  db: ReturnType<typeof createDb>,
+  args: {
+    communityId: string;
+    viewerId: string | undefined;
+    limit: number;
+    cursor: { createdAt: string; id: string } | null | undefined;
+    excludedAuthors?: Set<string>;
+    includeReplies?: boolean;
+  },
+) {
+  const { cursor, excludedAuthors } = args;
+  const rows = await db.query.post.findMany({
+    where: and(
+      eq(post.communityId, args.communityId),
+      args.includeReplies ? undefined : isNull(post.replyToPostId),
+      excludedAuthors && excludedAuthors.size > 0
+        ? notInArray(post.authorId, [...excludedAuthors])
+        : undefined,
+      cursor
+        ? or(
+            lt(post.createdAt, new Date(cursor.createdAt)),
+            and(
+              eq(post.createdAt, new Date(cursor.createdAt)),
+              lt(post.id, cursor.id),
+            ),
+          )
+        : undefined,
+    ),
+    orderBy: [desc(post.createdAt), desc(post.id)],
+    limit: args.limit + 1,
+    with: postWith,
+  });
+
+  let nextCursor: { createdAt: string; id: string } | null = null;
+  if (rows.length > args.limit) {
+    rows.pop();
+    const last = rows[rows.length - 1]!;
+    nextCursor = { createdAt: last.createdAt.toISOString(), id: last.id };
+  }
+
+  const engagement = await viewerEngagement(
+    db,
+    args.viewerId,
+    rows.map((row) => row.id),
+  );
+  return { items: stampEngagement(rows, engagement), nextCursor };
 }
 
 export const postRouter = router({
@@ -736,7 +793,7 @@ export const postRouter = router({
           communityId,
           ctx.session.user.id,
         );
-        if (!access?.isMember) {
+        if (!access?.canPost) {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: 'Join this community to post in it',
@@ -809,7 +866,6 @@ export const postRouter = router({
     .query(async ({ ctx, input }) => {
       const db = createDb();
       const viewerId = ctx.session?.user.id;
-      const { cursor } = input;
 
       // Independent lookups; a locked-out viewer wastes the cheap exclusions
       // query, which is worth the saved round trip on the common path.
@@ -827,46 +883,14 @@ export const postRouter = router({
         return { locked: true as const, items: [], nextCursor: null };
       }
 
-      const rows = await db.query.post.findMany({
-        where: and(
-          eq(post.communityId, input.communityId),
-          isNull(post.replyToPostId),
-          feedExcluded.size > 0
-            ? notInArray(post.authorId, [...feedExcluded])
-            : undefined,
-          cursor
-            ? or(
-                lt(post.createdAt, new Date(cursor.createdAt)),
-                and(
-                  eq(post.createdAt, new Date(cursor.createdAt)),
-                  lt(post.id, cursor.id),
-                ),
-              )
-            : undefined,
-        ),
-        orderBy: [desc(post.createdAt), desc(post.id)],
-        limit: input.limit + 1,
-        with: postWith,
-      });
-
-      let nextCursor: { createdAt: string; id: string } | null = null;
-      if (rows.length > input.limit) {
-        rows.pop();
-        const last = rows[rows.length - 1]!;
-        nextCursor = { createdAt: last.createdAt.toISOString(), id: last.id };
-      }
-
-      const engagement = await viewerEngagement(
-        db,
+      const page = await pageCommunityPosts(db, {
+        communityId: input.communityId,
         viewerId,
-        rows.map((row) => row.id),
-      );
-
-      return {
-        locked: false as const,
-        items: stampEngagement(rows, engagement),
-        nextCursor,
-      };
+        limit: input.limit,
+        cursor: input.cursor,
+        excludedAuthors: feedExcluded,
+      });
+      return { locked: false as const, ...page };
     }),
 
   byUser: publicProcedure

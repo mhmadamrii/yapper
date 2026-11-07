@@ -1,9 +1,11 @@
 import { createDb } from '@yapper/db';
 import { user } from '@yapper/db/schema/auth';
-import { and, desc, eq, ilike, lt, or } from 'drizzle-orm';
+import { community } from '@yapper/db/schema/community';
+import { and, asc, desc, eq, ilike, lt, or } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { isOwner, ownerProcedure, protectedProcedure, router } from '../index';
+import { pageCommunityPosts } from './post';
 
 const PAGE_SIZE = 30;
 
@@ -71,6 +73,40 @@ export const moderationRouter = router({
             : undefined,
       };
     }),
+
+  // Every community, private included — the picker for `communityPosts`.
+  // Small table, so one unpaginated read.
+  communities: ownerProcedure.query(() =>
+    createDb()
+      .select({
+        id: community.id,
+        name: community.name,
+        visibility: community.visibility,
+        memberCount: community.memberCount,
+      })
+      .from(community)
+      .orderBy(asc(community.name)),
+  ),
+
+  // A community's posts regardless of visibility or membership, replies
+  // included, and no block/mute filtering — moderation sees everything.
+  communityPosts: ownerProcedure
+    .input(
+      z.object({
+        communityId: z.string().min(1),
+        limit: z.number().int().min(1).max(50).default(20),
+        cursor: z.object({ createdAt: z.string(), id: z.string() }).nullish(),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      pageCommunityPosts(createDb(), {
+        communityId: input.communityId,
+        viewerId: ctx.session.user.id,
+        limit: input.limit,
+        cursor: input.cursor,
+        includeReplies: true,
+      }),
+    ),
 
   setVerified: ownerProcedure
     .input(z.object({ userId: z.string().min(1), verified: z.boolean() }))
