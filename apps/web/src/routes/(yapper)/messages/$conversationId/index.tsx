@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { ArrowLeft } from 'lucide-react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useSession } from '@/hooks/use-session';
 import { seo } from '@/lib/seo';
@@ -49,9 +50,16 @@ function ConversationPage() {
   useDocumentTitle(title);
 
   return (
-    <div className="flex h-svh flex-col">
-      <header className="bg-background/80 border-border sticky top-0 z-10 flex items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur">
+    <div className="flex h-[calc(100svh-4rem)] flex-col md:h-svh">
+      <header className="bg-background/80 border-border sticky top-0 z-10 flex items-center justify-between gap-3 border-b py-3 pr-4 pl-14 backdrop-blur md:pl-4">
         <div className="flex min-w-0 items-center gap-3">
+          <Link
+            to="/messages"
+            aria-label="Back to chats"
+            className="shrink-0 md:hidden"
+          >
+            <ArrowLeft className="size-5" />
+          </Link>
           <Switch>
             <Match when={isGroup}>
               <UserAvatar

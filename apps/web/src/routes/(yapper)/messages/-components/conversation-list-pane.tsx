@@ -17,7 +17,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 
 type ConversationItem = inferRouterOutputs<AppRouter>['message']['list']['items'][number]; // prettier-ignore
 
-export function ConversationListPane() {
+export function ConversationListPane({ className }: { className?: string }) {
   const trpc = useTRPC();
   const { data: session } = useSession();
   const { conversationId: activeId } = useParams({ strict: false });
@@ -36,8 +36,10 @@ export function ConversationListPane() {
   const conversations = listQuery.data?.pages.flatMap((page) => page.items) ?? []; // prettier-ignore
 
   return (
-    <aside className="flex w-[350px] shrink-0 flex-col">
-      <header className="flex items-center justify-between px-4 py-3">
+    <aside
+      className={cn('flex w-full shrink-0 flex-col md:w-[350px]', className)}
+    >
+      <header className="flex items-center justify-between py-3 pr-4 pl-14 md:pl-4">
         <h1 className="text-xl font-bold">Chats</h1>
         <div className="flex items-center gap-1">
           <Link

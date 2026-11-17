@@ -47,7 +47,10 @@ function FeedsPage() {
   const posts = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
-    <main className="border-border min-h-svh w-full max-w-[640px] border-x">
+    <main
+      data-page="feeds"
+      className="border-border min-h-svh w-full max-w-[640px] border-x"
+    >
       <header className="bg-background/80 border-border sticky top-0 z-10 border-b backdrop-blur">
         <div className="px-4 py-3">
           <h1 className="font-bold">Feeds</h1>

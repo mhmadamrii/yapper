@@ -5,7 +5,9 @@ export interface MentionSegment {
 
 // Mentions start at the beginning of the string or after whitespace — same
 // trigger rule as the composer's autocomplete (mention-textarea.tsx).
-const MENTION_PATTERN = /(^|\s)@([a-zA-Z0-9_]{1,30})/g;
+// Handles may contain dots (e.g. `test.yapper`), but a dot only counts when
+// followed by more handle chars, so a sentence-ending `@test.` stays clean.
+const MENTION_PATTERN = /(^|\s)@([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)/g;
 
 export function splitMentions(text: string): MentionSegment[] {
   const segments: MentionSegment[] = [];

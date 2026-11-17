@@ -22,7 +22,7 @@ interface CaretCoords {
 // and Bluesky's trigger rule.
 function findMentionMatch(text: string, caret: number): MentionMatch | null {
   const upToCaret = text.slice(0, caret);
-  const match = /(?:^|\s)@([a-zA-Z0-9_]{0,30})$/.exec(upToCaret);
+  const match = /(?:^|\s)@([a-zA-Z0-9_.]{0,30})$/.exec(upToCaret);
   if (!match) return null;
   const query = match[1] ?? '';
   return { query, start: caret - query.length - 1, end: caret };
@@ -183,7 +183,7 @@ export function MentionTextarea({
         <For each={splitMentions(value)}>
           {(segment, i) =>
             segment.type === 'mention' ? (
-              <span key={i} className="text-primary">
+              <span key={i} className="text-blue-500">
                 {segment.value}
               </span>
             ) : (
