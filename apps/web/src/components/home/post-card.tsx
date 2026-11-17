@@ -47,9 +47,13 @@ export function PostCard({
   // draws a vertical line from the avatar to the card's bottom edge and
   // drops the bottom border so the thread reads as one column.
   threadLine = false,
+  // Continues a thread line from the card above into this card's avatar
+  // (e.g. a bot's answer rendered right under the reply that asked it).
+  threadLineTop = false,
 }: {
   post: PostListItem;
   threadLine?: boolean;
+  threadLineTop?: boolean;
 }) {
   const [quoteOpen, setQuoteOpen] = useState(false);
   const navigate = useNavigate();
@@ -125,14 +129,21 @@ export function PostCard({
   return (
     <article
       onClick={handleArticleClick}
-      className={`hover:bg-accent/30 cursor-pointer px-4 py-3 transition-colors ${
+      className={`hover:bg-accent/30 relative cursor-pointer px-4 py-3 transition-colors ${
         threadLine ? '' : 'border-border border-b'
       }`}
     >
+      {/* left-10 = px-4 (16px) + half the w-12 avatar column (24px) — the
+          same axis the line below a threadLine card runs on. */}
+      <Show when={threadLineTop}>
+        <div className="bg-border absolute top-0 left-10 h-3 w-px -translate-x-1/2" />
+      </Show>
       <div className="flex gap-3">
         <div
           className={
-            threadLine ? 'flex w-12 shrink-0 flex-col items-center' : 'contents'
+            threadLine || threadLineTop
+              ? 'flex w-12 shrink-0 flex-col items-center'
+              : 'contents'
           }
         >
           <Show

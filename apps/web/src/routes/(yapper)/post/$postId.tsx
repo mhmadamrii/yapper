@@ -157,7 +157,16 @@ function PostDetailPage() {
               <PostDetail post={post} />
               <ReplyDialogRow post={post} />
               <For each={post.replies}>
-                {(reply) => <PostCard key={reply.id} post={reply} />}
+                {(reply) => (
+                  <div key={reply.id}>
+                    {/* A bot's answer sits directly under the reply that
+                        asked it, joined by a thread line. */}
+                    <PostCard post={reply} threadLine={!!reply.botAnswer} />
+                    <Show when={reply.botAnswer}>
+                      {(answer) => <PostCard post={answer} threadLineTop />}
+                    </Show>
+                  </div>
+                )}
               </For>
             </>
           )}

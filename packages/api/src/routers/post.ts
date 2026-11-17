@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { createDb } from '@yapper/db';
 import type { Database, Transaction } from '@yapper/db';
+import { botConfig } from '@yapper/db/schema/bot';
 import { community, communityMember } from '@yapper/db/schema/community';
 import { like, repost, save } from '@yapper/db/schema/engagement';
 import { post, postMedia } from '@yapper/db/schema/post';
@@ -662,11 +663,44 @@ export const postRouter = router({
         (reply) => !feedExcluded.has(reply.authorId),
       );
 
+      // A bot's answer to a reply is itself a reply *to that reply*, so the
+      // direct-replies relation above never contains it. Fetch those one
+      // level down so the page can render each answer right under the reply
+      // that asked — first (oldest) bot answer per reply.
+      const botAnswerRows =
+        visibleReplies.length > 0
+          ? await db.query.post.findMany({
+              where: and(
+                inArray(
+                  post.replyToPostId,
+                  visibleReplies.map((reply) => reply.id),
+                ),
+                inArray(
+                  post.authorId,
+                  db.select({ id: botConfig.userId }).from(botConfig),
+                ),
+              ),
+              orderBy: [asc(post.createdAt), asc(post.id)],
+              with: postWith,
+            })
+          : [];
+      const botAnswerByReplyId = new Map<
+        string,
+        (typeof botAnswerRows)[number]
+      >();
+      for (const row of botAnswerRows) {
+        if (feedExcluded.has(row.authorId)) continue;
+        if (!botAnswerByReplyId.has(row.replyToPostId!)) {
+          botAnswerByReplyId.set(row.replyToPostId!, row);
+        }
+      }
+
       const [engagement, followRows] = await Promise.all([
         viewerEngagement(db, viewerId, [
           found.id,
           ...(found.replyTo ? [found.replyTo.id] : []),
           ...visibleReplies.map((reply) => reply.id),
+          ...[...botAnswerByReplyId.values()].map((row) => row.id),
         ]),
         // Whether the viewer follows the post's author — drives the
         // Follow button on the detail page.
@@ -698,12 +732,23 @@ export const postRouter = router({
               repostedByMe: engagement.reposted.has(found.replyTo.id),
             }
           : null,
-        replies: visibleReplies.map((reply) => ({
-          ...reply,
-          likedByMe: engagement.liked.has(reply.id),
-          savedByMe: engagement.saved.has(reply.id),
-          repostedByMe: engagement.reposted.has(reply.id),
-        })),
+        replies: visibleReplies.map((reply) => {
+          const botAnswer = botAnswerByReplyId.get(reply.id);
+          return {
+            ...reply,
+            likedByMe: engagement.liked.has(reply.id),
+            savedByMe: engagement.saved.has(reply.id),
+            repostedByMe: engagement.reposted.has(reply.id),
+            botAnswer: botAnswer
+              ? {
+                  ...botAnswer,
+                  likedByMe: engagement.liked.has(botAnswer.id),
+                  savedByMe: engagement.saved.has(botAnswer.id),
+                  repostedByMe: engagement.reposted.has(botAnswer.id),
+                }
+              : null,
+          };
+        }),
       };
     }),
 
@@ -859,6 +904,7 @@ export const postRouter = router({
           authorId: ctx.session.user.id,
           content: input.content,
           communityId,
+          replyToPostId: input.replyToPostId,
         });
       }
 

@@ -3,7 +3,7 @@ import { user } from '@yapper/db/schema/auth';
 import { botConfig } from '@yapper/db/schema/bot';
 import { community } from '@yapper/db/schema/community';
 import { post } from '@yapper/db/schema/post';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { buildPostInsertStatements } from '../routers/post';
 import { generateBotReply } from './gemini';
 import { notify } from './notifications';
@@ -58,7 +58,8 @@ function line(username: string | null, content: string) {
 }
 
 // Called (fire-and-forget) after a community post is created. If it
-// @-mentions a bot assigned to that community, the bot replies in-thread
+// @-mentions a bot assigned to that community, or replies to one of that
+// bot's posts, the bot answers in-thread
 // with the conversation as context. Never throws into the caller.
 export async function respondToBotMentions(
   db: Database,
@@ -67,12 +68,24 @@ export async function respondToBotMentions(
     authorId: string;
     content: string;
     communityId: string | null | undefined;
+    // Set when the new post is a reply — replying to a bot's post summons
+    // that bot just like an @-mention does.
+    replyToPostId?: string | null;
   },
 ) {
   try {
     if (!args.communityId) return;
     const handles = extractHandles(args.content);
-    if (handles.length === 0) return;
+
+    let repliedToBotId: string | null = null;
+    if (args.replyToPostId) {
+      const [parent] = await db
+        .select({ authorId: post.authorId })
+        .from(post)
+        .where(eq(post.id, args.replyToPostId));
+      repliedToBotId = parent?.authorId ?? null;
+    }
+    if (handles.length === 0 && !repliedToBotId) return;
 
     // Only bots assigned to *this* community can be summoned; bots never
     // trigger bots, so two of them can't loop each other.
@@ -94,7 +107,12 @@ export async function respondToBotMentions(
         and(
           eq(botConfig.communityId, args.communityId),
           eq(botConfig.active, true),
-          inArray(sql`lower(${user.username})`, handles),
+          or(
+            handles.length > 0
+              ? inArray(sql`lower(${user.username})`, handles)
+              : undefined,
+            repliedToBotId ? eq(botConfig.userId, repliedToBotId) : undefined,
+          ),
         ),
       )
       .limit(MAX_BOTS_PER_POST);
