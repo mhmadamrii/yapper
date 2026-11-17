@@ -21,6 +21,7 @@ import { useSetRepost } from '@/lib/use-set-repost';
 import { useSetSave } from '@/lib/use-set-save';
 import { formatCount, formatPostTimestamp } from '@/lib/utils';
 import { FeedSkeleton } from '@/routes/(yapper)/-components/app-skeletons';
+import { BotQuotaHint } from '@/routes/(yapper)/-components/bot-quota-hint';
 import { DialogCreateReply } from '@/routes/(yapper)/-components/dialog-create-reply';
 import { DialogCreateQuote } from '@/routes/(yapper)/-components/dialog-create-quote';
 import { useTRPC } from '@/utils/trpc';
@@ -184,19 +185,26 @@ function ReplyDialogRow({ post }: { post: PostById }) {
   return (
     <Show when={session}>
       {(s) => (
-        <DialogCreateReply
-          post={post}
-          trigger={
-            <button className="border-border hover:bg-accent/30 flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors">
-              <UserAvatar
-                name={s.user.name}
-                image={s.user.image}
-                className="size-9 shrink-0"
-              />
-              <span className="text-muted-foreground">Write your reply</span>
-            </button>
-          }
-        />
+        <>
+          <DialogCreateReply
+            post={post}
+            trigger={
+              <button className="border-border hover:bg-accent/30 flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors">
+                <UserAvatar
+                  name={s.user.name}
+                  image={s.user.image}
+                  className="size-9 shrink-0"
+                />
+                <span className="text-muted-foreground">Write your reply</span>
+              </button>
+            }
+          />
+          <Show when={post.author.isBot}>
+            <div className="border-border border-b px-4 py-2">
+              <BotQuotaHint botName={post.author.name} />
+            </div>
+          </Show>
+        </>
       )}
     </Show>
   );

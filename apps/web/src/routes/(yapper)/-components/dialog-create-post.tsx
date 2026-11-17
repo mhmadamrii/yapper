@@ -13,6 +13,7 @@ import { For, Match, Show, Switch } from '@/components/control-flow';
 import { LinkPreviewCard } from '@/components/home/link-preview-card';
 import { useComposerLinkPreview } from '@/hooks/use-composer-link-preview';
 import { GifPickerButton } from './gif-picker-button';
+import { CommunityBotHint } from './bot-quota-hint';
 import { MentionTextarea } from './mention-textarea';
 import { CommunityCover } from './community-card';
 
@@ -414,6 +415,10 @@ export function DialogCreatePost({
               rows={totalImages > 0 ? 4 : 8}
               className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
             />
+
+            <Show when={targetCommunityId}>
+              {(id) => <CommunityBotHint communityId={id} />}
+            </Show>
 
             <Show when={totalImages === 0 && linkPreview.preview}>
               {(preview) => (

@@ -6,6 +6,7 @@ import { env } from '@yapper/env/server';
 import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { protectedProcedure, router } from '../index';
+import { getAskQuota } from '../lib/bot-mention';
 import { postForBot } from '../lib/bot-scheduler';
 
 const MAX_BOTS_PER_OWNER = 3;
@@ -30,6 +31,33 @@ async function requireOwnedBot(
 }
 
 export const botRouter = router({
+  // Active bots assigned to a community — drives the composer's "mention a
+  // bot" hint. Names/handles only; nothing private.
+  inCommunity: protectedProcedure
+    .input(z.object({ communityId: z.string().min(1) }))
+    .query(({ input }) =>
+      createDb()
+        .select({
+          userId: botConfig.userId,
+          name: user.name,
+          username: user.username,
+        })
+        .from(botConfig)
+        .innerJoin(user, eq(user.id, botConfig.userId))
+        .where(
+          and(
+            eq(botConfig.communityId, input.communityId),
+            eq(botConfig.active, true),
+          ),
+        ),
+    ),
+
+  // How many more bot answers the caller can trigger (mentions and replies
+  // to a bot share one per-user window) and when a slot frees up.
+  askQuota: protectedProcedure.query(({ ctx }) =>
+    getAskQuota(ctx.session.user.id),
+  ),
+
   // The caller's own bots only — there's no admin view across all owners.
   list: protectedProcedure.query(({ ctx }) =>
     createDb()

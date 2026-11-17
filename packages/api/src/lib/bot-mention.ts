@@ -41,6 +41,23 @@ function allowAsk(userId: string) {
   return true;
 }
 
+// Read-only view of the caller's window, for the UI hint. `resetsAt` is when
+// the oldest counted ask ages out (one slot frees up), null if none counted.
+export function getAskQuota(userId: string) {
+  const now = Date.now();
+  const recent = (asks.get(userId) ?? []).filter(
+    (t) => now - t < ASK_WINDOW_MS,
+  );
+  return {
+    limit: ASK_LIMIT,
+    remaining: Math.max(0, ASK_LIMIT - recent.length),
+    windowMinutes: ASK_WINDOW_MS / 60_000,
+    resetsAt: recent[0]
+      ? new Date(recent[0] + ASK_WINDOW_MS).toISOString()
+      : null,
+  };
+}
+
 function extractHandles(content: string) {
   const handles = new Set<string>();
   for (const match of content.matchAll(MENTION_PATTERN)) {

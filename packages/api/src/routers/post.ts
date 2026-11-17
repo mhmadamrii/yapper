@@ -189,6 +189,7 @@ const postAuthorColumns = {
   displayUsername: true,
   emailVerified: true,
   image: true,
+  isBot: true,
 } as const;
 
 // The one definition of "a post, hydrated for rendering". Every feed shares

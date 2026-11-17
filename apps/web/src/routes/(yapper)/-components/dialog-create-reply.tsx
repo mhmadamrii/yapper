@@ -11,6 +11,7 @@ import { LinkPreviewCard } from '@/components/home/link-preview-card';
 import { useComposerLinkPreview } from '@/hooks/use-composer-link-preview';
 import { MentionText } from '@/components/mention-text';
 import { GifPickerButton } from './gif-picker-button';
+import { BotQuotaHint } from './bot-quota-hint';
 import { MentionTextarea } from './mention-textarea';
 import { UserAvatar } from '@/components/user-avatar';
 
@@ -173,6 +174,14 @@ export function DialogCreateReply({
         });
       }
       await queryClient.invalidateQueries({ queryKey: trpc.post.pathKey() });
+      // The bot's quota is spent a moment after the reply lands, server-side.
+      setTimeout(
+        () =>
+          queryClient.invalidateQueries({
+            queryKey: trpc.bot.askQuota.queryKey(),
+          }),
+        2000,
+      );
 
       toast.success('Reply sent');
       reset();
@@ -306,6 +315,10 @@ export function DialogCreateReply({
                 rows={totalImages > 0 ? 3 : 6}
                 className="placeholder:text-muted-foreground w-full resize-none bg-transparent pt-2 text-lg outline-none"
               />
+
+              <Show when={post.author.isBot}>
+                <BotQuotaHint botName={post.author.name} />
+              </Show>
 
               <Show when={totalImages === 0 && linkPreview.preview}>
                 {(preview) => (
