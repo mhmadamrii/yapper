@@ -9,7 +9,11 @@ import { buildPostInsertStatements } from '../routers/post';
 // of "what happens when a bot posts."
 export async function postForBot(
   db: Database,
-  bot: { userId: string; systemPrompt: string },
+  bot: {
+    userId: string;
+    systemPrompt: string;
+    communityId?: string | null;
+  },
 ) {
   const content = await generateBotPost(bot.systemPrompt);
   const postId = crypto.randomUUID();
@@ -26,6 +30,7 @@ export async function postForBot(
       authorId: bot.userId,
       content,
       media: [],
+      communityId: bot.communityId ?? undefined,
     });
     for (const statement of statements) {
       await statement;
@@ -51,6 +56,7 @@ export async function runBotScheduler(db: Database) {
     .select({
       userId: botConfig.userId,
       systemPrompt: botConfig.systemPrompt,
+      communityId: botConfig.communityId,
     })
     .from(botConfig)
     .where(

@@ -1,0 +1,2 @@
+ALTER TABLE "bot_config" ADD COLUMN "community_id" text;--> statement-breakpoint
+ALTER TABLE "bot_config" ADD CONSTRAINT "bot_config_community_id_community_id_fk" FOREIGN KEY ("community_id") REFERENCES "public"."community"("id") ON DELETE set null ON UPDATE no action;

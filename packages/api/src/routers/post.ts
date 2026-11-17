@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { extractHashtags } from '../lib/hashtags';
 import { getViewerExclusions } from '../lib/social-filters';
 import { getOrCreateLinkPreview, normalizeUrl } from '../lib/unfurl';
+import { respondToBotMentions } from '../lib/bot-mention';
 import { notify } from '../lib/notifications';
 import { isOwner, protectedProcedure, publicProcedure, router } from '../index';
 
@@ -848,6 +849,18 @@ export const postRouter = router({
             })
           : undefined,
       ]);
+
+      // A bot @-mentioned in its community answers in the background — the
+      // author's request doesn't wait on the model. Humans only; the helper
+      // swallows its own errors.
+      if (communityId) {
+        void respondToBotMentions(db, {
+          postId,
+          authorId: ctx.session.user.id,
+          content: input.content,
+          communityId,
+        });
+      }
 
       return { id: postId };
     }),
