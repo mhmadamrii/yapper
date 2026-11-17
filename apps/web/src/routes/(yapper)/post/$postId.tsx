@@ -57,6 +57,12 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 
+// How long after sending a reply we keep polling for a bot's answer, and how
+// often. Generation takes a few seconds; past the window we assume no answer
+// is coming (bot inactive, quota hit, or the model failed).
+const BOT_ANSWER_POLL_MS = 3_000;
+const BOT_ANSWER_WINDOW_MS = 90_000;
+
 type ReplySort = 'top' | 'oldest' | 'newest';
 type ReplyLayout = 'linear' | 'threaded';
 type PostById = inferRouterOutputs<AppRouter>['post']['byId'];
@@ -74,8 +80,32 @@ function PostDetailPage() {
   const [replySort, setReplySort] = useState<ReplySort>('top');
   const [replyLayout, setReplyLayout] = useState<ReplyLayout>('linear');
 
+  const { data: session } = useSession();
+  const myId = session?.user.id;
+
   const postQuery = useQuery(
-    trpc.post.byId.queryOptions({ id: postId, replySort }),
+    trpc.post.byId.queryOptions(
+      { id: postId, replySort },
+      {
+        // The bot answers asynchronously after the reply is saved, so nothing
+        // else tells this page the answer landed. While one of my recent
+        // replies (to a bot, or mentioning one) has no answer yet, poll.
+        refetchInterval: (query) => {
+          const data = query.state.data;
+          if (!data || !myId) return false;
+          const now = Date.now();
+          const waiting = data.replies.some(
+            (reply) =>
+              reply.authorId === myId &&
+              !reply.botAnswer &&
+              now - new Date(reply.createdAt).getTime() <
+                BOT_ANSWER_WINDOW_MS &&
+              (data.author.isBot || reply.content.includes('@')),
+          );
+          return waiting ? BOT_ANSWER_POLL_MS : false;
+        },
+      },
+    ),
   );
   useDocumentTitle(
     postQuery.data
