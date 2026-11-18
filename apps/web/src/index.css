@@ -9,3 +9,46 @@
 [data-rmiz-modal-overlay][data-rmiz-modal-overlay='visible'] {
   background-color: color-mix(in oklab, var(--background) 95%, transparent);
 }
+
+/* Hearts gushing from the bottom-right corner for the special account
+   (HeartFountain in components/love-rain.tsx). */
+@keyframes love-gush {
+  0% {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--gush-x), var(--gush-y)) scale(1.1);
+    opacity: 0;
+  }
+}
+.love-gush {
+  animation-name: love-gush;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  animation-iteration-count: infinite;
+}
+
+/* Heart burst on like for the special account (burstHearts in love-rain). */
+@keyframes love-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+        calc(-50% + var(--burst-x)),
+        calc(-50% + var(--burst-y))
+      )
+      scale(1.2);
+    opacity: 0;
+  }
+}
+.love-burst {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  animation: love-burst 900ms ease-out forwards;
+}

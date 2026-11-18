@@ -5,6 +5,8 @@ import { SidebarLeft } from '@/components/home/sidebar-left';
 import { SidebarRight } from '@/components/home/sidebar-right';
 import { MobileNav } from '@/components/home/mobile-nav';
 import { ImageDropZone } from '@/components/image-drop-zone';
+import { HeartFountain } from '@/components/love-rain';
+import { LoveKites } from '@/components/love-kites';
 
 export const Route = createFileRoute('/(yapper)')({
   component: RouteComponent,
@@ -39,6 +41,8 @@ function RouteComponent() {
       </Show>
       <MobileNav />
       <ImageDropZone />
+      <HeartFountain />
+      <LoveKites />
     </div>
   );
 }
