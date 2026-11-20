@@ -1,8 +1,9 @@
+import { Link } from '@tanstack/react-router';
 import { Fragment } from 'react';
 import { splitMentions } from '@/lib/mentions';
 import { splitUrls } from '@/lib/urls';
 
-// Renders `@handle` and bare links in blue — inherits the parent element's
+// Renders `@handle` (linking to that profile) and bare links in blue — inherits the parent element's
 // own className (whitespace, size, truncation), so drop this in wherever
 // `{post.content}` used to sit.
 //
@@ -15,9 +16,16 @@ export function MentionText({ text }: { text: string }) {
     <>
       {segments.map((segment, i) =>
         segment.type === 'mention' ? (
-          <span key={i} className="text-blue-500">
+          <Link
+            key={i}
+            to="/u/$username"
+            params={{ username: segment.value.slice(1) }}
+            // Post cards are clickable as a whole; don't open the post too.
+            onClick={(e) => e.stopPropagation()}
+            className="text-blue-500 hover:underline"
+          >
             {segment.value}
-          </span>
+          </Link>
         ) : (
           <Fragment key={i}>
             {splitUrls(segment.value).map((part, j) =>

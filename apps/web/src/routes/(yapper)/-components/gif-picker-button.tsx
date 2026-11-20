@@ -3,10 +3,14 @@ import { Klipy } from 'gif-picker-react/providers/klipy';
 import 'gif-picker-react/style.css';
 import { env } from '@yapper/env/web';
 import { Button } from '@yapper/ui/components/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@yapper/ui/components/popover';
 import { ImagePlay } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { Show } from '@/components/control-flow';
 
 /**
  * Klipy GIF picker for the composers. A picked GIF is downloaded into a
@@ -43,31 +47,34 @@ export function GifPickerButton({
     }
   };
 
+  // Portaled popover rather than an absolutely positioned child: the
+  // composer dialog scrolls (overflow-y-auto), which clipped the picker's
+  // top — search input included. The positioner flips/shifts to stay on
+  // screen, and the height shrinks to the space actually available.
   return (
-    <div className="relative">
-      <Button
-        variant="ghost"
-        size="icon-sm"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
         disabled={disabled}
-        aria-label="Add a GIF"
-        onClick={() => setOpen((prev) => !prev)}
+        render={
+          <Button variant="ghost" size="icon-sm" aria-label="Add a GIF">
+            <ImagePlay className="size-5" />
+          </Button>
+        }
+      />
+      <PopoverContent
+        side="top"
+        align="start"
+        className="w-[calc(100vw-2rem)] max-w-[520px] overflow-hidden p-0"
+        style={{ height: 'min(440px, var(--available-height))' }}
       >
-        <ImagePlay className="size-5" />
-      </Button>
-
-      <Show when={open}>
-        {/* Click-away backdrop — the picker floats above the composer. */}
-        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-        <div className="absolute bottom-10 left-0 z-50 w-[calc(100vw-2rem)] max-w-[520px]">
-          <GifPicker
-            provider={provider}
-            theme={Theme.AUTO}
-            onGifClick={handleGifClick}
-            width="100%"
-            height={440}
-          />
-        </div>
-      </Show>
-    </div>
+        <GifPicker
+          provider={provider}
+          theme={Theme.AUTO}
+          onGifClick={handleGifClick}
+          width="100%"
+          height="100%"
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

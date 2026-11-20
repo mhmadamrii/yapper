@@ -3,7 +3,7 @@ import { mediaUrl, uploadToStorage } from '@/lib/media';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import { ImageIcon, Smile, X } from 'lucide-react';
+import { ImageIcon, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
@@ -13,6 +13,7 @@ import { MentionText } from '@/components/mention-text';
 import { GifPickerButton } from './gif-picker-button';
 import { BotQuotaHint } from './bot-quota-hint';
 import { MentionTextarea } from './mention-textarea';
+import { EmojiPickerButton } from './emoji-picker-button';
 import { UserAvatar } from '@/components/user-avatar';
 
 import {
@@ -45,6 +46,8 @@ export interface ReplyTarget {
     name: string;
     username: string | null;
     image: string | null;
+    // Drives the bot quota hint under the composer.
+    isBot: boolean;
   };
   media: Array<{
     id: string;
@@ -64,6 +67,7 @@ export function DialogCreateReply({
 }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(initialDraft?.content ?? '');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [images, setImages] = useState<PendingImage[]>([]);
   const [existingMedia, setExistingMedia] = useState<DraftMediaItem[]>(
     initialDraft?.media ?? [],
@@ -202,6 +206,8 @@ export function DialogCreateReply({
           id: initialDraft.id,
           content: text.trim(),
           media,
+          // Replies have no interest picker; keep whatever the draft had.
+          interestSlug: initialDraft.interestSlug ?? null,
         });
       } else {
         await createDraft.mutateAsync({
@@ -308,6 +314,7 @@ export function DialogCreateReply({
             />
             <div className="min-w-0 flex-1">
               <MentionTextarea
+                ref={textareaRef}
                 autoFocus
                 value={text}
                 onChange={setText}
@@ -400,9 +407,11 @@ export function DialogCreateReply({
                   )
                 }
               />
-              <Button variant="ghost" size="icon-sm">
-                <Smile className="size-5" />
-              </Button>
+              <EmojiPickerButton
+                textareaRef={textareaRef}
+                value={text}
+                onChange={setText}
+              />
             </div>
 
             <div className="flex items-center gap-4">

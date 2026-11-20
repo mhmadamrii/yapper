@@ -1,3 +1,4 @@
+import { InterestLink } from '@/components/interest-link';
 import type { AppRouter } from '@yapper/api/routers/index';
 import type { inferRouterOutputs } from '@trpc/server';
 
@@ -295,7 +296,12 @@ function PostDetail({ post }: { post: PostById }) {
               {post.author.emailVerified && <VerifiedBadge />}
             </button>
           </ProfileHoverCard>
-          <p className="text-muted-foreground truncate text-sm">@{handle}</p>
+          <div className="flex min-w-0 items-center gap-1 text-sm">
+            <span className="text-muted-foreground truncate">@{handle}</span>
+            <Show when={post.interestSlug}>
+              {(slug) => <InterestLink slug={slug} />}
+            </Show>
+          </div>
         </div>
         <Show when={session?.user.id !== post.author.id}>
           <Button

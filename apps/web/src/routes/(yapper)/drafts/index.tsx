@@ -109,6 +109,7 @@ function DraftsPage() {
                     name: draft.replyTo.author.name,
                     username: draft.replyTo.author.username,
                     image: draft.replyTo.author.image,
+                    isBot: draft.replyTo.author.isBot,
                   },
                   media: [],
                 }

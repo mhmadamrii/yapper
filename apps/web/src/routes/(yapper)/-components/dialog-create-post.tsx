@@ -6,7 +6,7 @@ import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
 import { Skeleton } from '@yapper/ui/components/skeleton';
-import { ChevronDown, Hash, ImageIcon, Smile, X } from 'lucide-react';
+import { ChevronDown, Hash, ImageIcon, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { For, Match, Show, Switch } from '@/components/control-flow';
@@ -15,6 +15,7 @@ import { useComposerLinkPreview } from '@/hooks/use-composer-link-preview';
 import { GifPickerButton } from './gif-picker-button';
 import { CommunityBotHint } from './bot-quota-hint';
 import { MentionTextarea } from './mention-textarea';
+import { EmojiPickerButton } from './emoji-picker-button';
 import { CommunityCover } from './community-card';
 
 import {
@@ -97,6 +98,7 @@ export function DialogCreatePost({
     onOpenChange?.(next);
   };
   const [text, setText] = useState(initialDraft?.content ?? '');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [images, setImages] = useState<PendingImage[]>(() =>
     (initialFiles ?? []).slice(0, MAX_IMAGES).map((file) => ({
       file,
@@ -408,6 +410,7 @@ export function DialogCreatePost({
           />
           <div className="min-w-0 flex-1">
             <MentionTextarea
+              ref={textareaRef}
               autoFocus
               value={text}
               onChange={setText}
@@ -624,9 +627,11 @@ export function DialogCreatePost({
                 )
               }
             />
-            <Button variant="ghost" size="icon-sm">
-              <Smile className="size-5" />
-            </Button>
+            <EmojiPickerButton
+              textareaRef={textareaRef}
+              value={text}
+              onChange={setText}
+            />
           </div>
 
           <div className="flex items-center gap-4">

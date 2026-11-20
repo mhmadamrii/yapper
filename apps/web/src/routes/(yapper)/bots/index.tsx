@@ -3,7 +3,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
 import { Checkbox } from '@yapper/ui/components/checkbox';
 import { ArrowLeft, Bot, Sparkles, Trash2 } from 'lucide-react';
-import { For, Match, Show, Switch } from '@/components/control-flow';
+import { For, Match, Switch } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
 import { requireSession } from '@/lib/route-guards';
 import { seo } from '@/lib/seo';

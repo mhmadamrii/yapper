@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@yapper/ui/components/button';
+import { ScrollArea } from '@yapper/ui/components/scroll-area';
 import { Hash } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '@yapper/ui/lib/utils';
 import { For, Match, Show, Switch } from '@/components/control-flow';
 import { PostCard } from '@/components/home/post-card';
@@ -14,6 +14,12 @@ import { useTRPC } from '@/utils/trpc';
 export const Route = createFileRoute('/(yapper)/feeds/')({
   pendingMinMs: 0,
   beforeLoad: ({ context }) => requireSession(context),
+  // `?interest=<slug>` narrows the feed to one interest. Lives in the URL so
+  // the "> slug" link on any post can deep-link straight into it.
+  validateSearch: (search: Record<string, unknown>): { interest?: string } =>
+    typeof search.interest === 'string' && search.interest.length > 0
+      ? { interest: search.interest }
+      : {},
   head: () => ({ meta: seo({ title: 'Feeds' }) }),
   component: FeedsPage,
 });
@@ -23,15 +29,33 @@ function FeedsPage() {
   const myInterestsQuery = useQuery(trpc.interest.mine.queryOptions());
   const interestListQuery = useQuery(trpc.interest.list.queryOptions());
 
+  const navigate = useNavigate({ from: Route.fullPath });
+
   // null = "All" (every saved interest combined). A chip narrows to just
   // that one slug.
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const activeSlug = Route.useSearch().interest ?? null;
+  const setActiveSlug = (slug: string | null) =>
+    navigate({ search: slug ? { interest: slug } : {} });
 
   const mySlugs = myInterestsQuery.data ?? [];
   const interestSlugs = activeSlug ? [activeSlug] : mySlugs;
   const myInterests = mySlugs
     .map((slug) => interestListQuery.data?.find((i) => i.slug === slug))
     .filter((i): i is NonNullable<typeof i> => !!i);
+  // Arriving from a post's interest link can select one the viewer hasn't
+  // saved — give it a chip too so the active filter is visible.
+  const chips =
+    activeSlug && !mySlugs.includes(activeSlug)
+      ? [
+          ...myInterests,
+          {
+            slug: activeSlug,
+            name:
+              interestListQuery.data?.find((i) => i.slug === activeSlug)
+                ?.name ?? activeSlug,
+          },
+        ]
+      : myInterests;
 
   const postsQuery = useInfiniteQuery(
     trpc.interest.posts.infiniteQueryOptions(
@@ -47,16 +71,16 @@ function FeedsPage() {
   const posts = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
-    <main
-      data-page="feeds"
-      className="border-border min-h-svh w-full max-w-[640px] border-x"
-    >
-      <header className="bg-background/80 border-border sticky top-0 z-10 border-b backdrop-blur">
+    // The page itself doesn't scroll: the header stays put and only the post
+    // list scrolls, inside a ScrollArea. Height is the viewport minus the
+    // mobile bottom nav (h-16, hidden from md up).
+    <main className="border-border flex h-[calc(100svh-4rem)] w-full max-w-[640px] flex-col border-x md:h-svh">
+      <header className="border-border shrink-0 border-b">
         <div className="px-4 py-3">
           <h1 className="font-bold">Feeds</h1>
         </div>
 
-        <Show when={mySlugs.length > 0}>
+        <Show when={chips.length > 0}>
           <nav className="flex gap-2 overflow-x-auto px-4 pb-3">
             <button
               onClick={() => setActiveSlug(null)}
@@ -69,7 +93,7 @@ function FeedsPage() {
             >
               All
             </button>
-            <For each={myInterests}>
+            <For each={chips}>
               {(option) => (
                 <button
                   key={option.slug}
@@ -89,64 +113,67 @@ function FeedsPage() {
         </Show>
       </header>
 
-      <Switch
-        fallback={
-          <div className="px-8 py-16 text-center">
-            <Hash className="text-muted-foreground mx-auto size-8" />
-            <p className="mt-4 text-lg font-bold">Build your Feeds tab</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Pick a few interests and posts tagged with them will show up here.
-            </p>
-            <Link
-              to="/search/interest"
-              className="bg-primary text-primary-foreground mt-4 inline-block rounded-full px-6 py-2.5 font-semibold"
-            >
-              Pick interests
-            </Link>
-          </div>
-        }
-      >
-        <Match when={myInterestsQuery.isPending}>
-          <FeedSkeleton />
-        </Match>
-
-        <Match when={mySlugs.length > 0 && postsQuery.isPending}>
-          <FeedSkeleton />
-        </Match>
-
-        <Match when={mySlugs.length > 0 && postsQuery.error}>
-          {(error) => (
-            <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-              Could not load this feed. {error.message}
-            </p>
-          )}
-        </Match>
-
-        <Match when={mySlugs.length > 0 && posts.length === 0}>
-          <p className="text-muted-foreground px-4 py-12 text-center text-sm">
-            No posts tagged with this topic yet.
-          </p>
-        </Match>
-
-        <Match when={mySlugs.length > 0 && posts.length > 0}>
-          <For each={posts}>
-            {(post) => <PostCard key={post.id} post={post} />}
-          </For>
-
-          <Show when={postsQuery.hasNextPage}>
-            <div className="flex justify-center py-6">
-              <Button
-                variant="secondary"
-                className="rounded-full"
-                disabled={postsQuery.isFetchingNextPage}
-                onClick={() => postsQuery.fetchNextPage()}
+      <ScrollArea className="min-h-0 flex-1">
+        <Switch
+          fallback={
+            <div className="px-8 py-16 text-center">
+              <Hash className="text-muted-foreground mx-auto size-8" />
+              <p className="mt-4 text-lg font-bold">Build your Feeds tab</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Pick a few interests and posts tagged with them will show up
+                here.
+              </p>
+              <Link
+                to="/search/interest"
+                className="bg-primary text-primary-foreground mt-4 inline-block rounded-full px-6 py-2.5 font-semibold"
               >
-                {postsQuery.isFetchingNextPage ? 'Loading...' : 'Load more'}
-              </Button>
+                Pick interests
+              </Link>
             </div>
-          </Show>
-        </Match>
-      </Switch>
+          }
+        >
+          <Match when={myInterestsQuery.isPending}>
+            <FeedSkeleton />
+          </Match>
+
+          <Match when={interestSlugs.length > 0 && postsQuery.isPending}>
+            <FeedSkeleton />
+          </Match>
+
+          <Match when={interestSlugs.length > 0 && postsQuery.error}>
+            {(error) => (
+              <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+                Could not load this feed. {error.message}
+              </p>
+            )}
+          </Match>
+
+          <Match when={interestSlugs.length > 0 && posts.length === 0}>
+            <p className="text-muted-foreground px-4 py-12 text-center text-sm">
+              No posts tagged with this topic yet.
+            </p>
+          </Match>
+
+          <Match when={interestSlugs.length > 0 && posts.length > 0}>
+            <For each={posts}>
+              {(post) => <PostCard key={post.id} post={post} />}
+            </For>
+
+            <Show when={postsQuery.hasNextPage}>
+              <div className="flex justify-center py-6">
+                <Button
+                  variant="secondary"
+                  className="rounded-full"
+                  disabled={postsQuery.isFetchingNextPage}
+                  onClick={() => postsQuery.fetchNextPage()}
+                >
+                  {postsQuery.isFetchingNextPage ? 'Loading...' : 'Load more'}
+                </Button>
+              </div>
+            </Show>
+          </Match>
+        </Switch>
+      </ScrollArea>
     </main>
   );
 }

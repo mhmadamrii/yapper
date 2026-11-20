@@ -39,6 +39,7 @@ export const draftRouter = router({
                 username: true,
                 displayUsername: true,
                 image: true,
+                isBot: true,
               },
             },
           },

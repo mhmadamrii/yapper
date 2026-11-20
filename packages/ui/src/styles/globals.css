@@ -162,18 +162,4 @@
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--muted-foreground);
   }
-
-  /* Slimmer page scrollbar on /feeds. Chromium ignores ::-webkit-scrollbar
-     while scrollbar-width / scrollbar-color are set, so reset them for this
-     page only. Firefox lacks ::-webkit-scrollbar and keeps `thin`, its
-     smallest size. */
-  @supports selector(::-webkit-scrollbar) {
-    html:has([data-page='feeds']) {
-      scrollbar-width: auto;
-      scrollbar-color: auto;
-    }
-    html:has([data-page='feeds'])::-webkit-scrollbar {
-      width: 4px;
-    }
-  }
 }

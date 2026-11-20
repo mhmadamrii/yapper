@@ -5,8 +5,9 @@ import { uploadToStorage } from '@/lib/media';
 import { useTRPC } from '@/utils/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yapper/ui/components/button';
-import { ImageIcon, Smile, X } from 'lucide-react';
+import { ImageIcon, X } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { EmojiPickerButton } from './emoji-picker-button';
 import { toast } from '@/lib/toast';
 import { For, Show } from '@/components/control-flow';
 import { GifPickerButton } from './gif-picker-button';
@@ -38,6 +39,7 @@ export function DialogCreateQuote({
   onOpenChange: (open: boolean) => void;
 }) {
   const [text, setText] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [images, setImages] = useState<PendingImage[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +178,7 @@ export function DialogCreateQuote({
             />
             <div className="min-w-0 flex-1">
               <textarea
+                ref={textareaRef}
                 autoFocus
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -238,9 +241,11 @@ export function DialogCreateQuote({
                   )
                 }
               />
-              <Button variant="ghost" size="icon-sm">
-                <Smile className="size-5" />
-              </Button>
+              <EmojiPickerButton
+                textareaRef={textareaRef}
+                value={text}
+                onChange={setText}
+              />
             </div>
 
             <div className="flex items-center gap-4">

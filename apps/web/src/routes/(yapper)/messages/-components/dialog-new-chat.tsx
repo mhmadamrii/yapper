@@ -116,7 +116,7 @@ export function DialogNewChat({ trigger }: { trigger: React.ReactElement }) {
     >
       <DialogTrigger render={trigger} />
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>

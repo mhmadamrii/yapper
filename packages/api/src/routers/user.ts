@@ -42,6 +42,27 @@ export const userRouter = router({
       return rows.filter((row) => !blocked.has(row.id));
     }),
 
+  // Resolves an `@handle` (as written in post text) to a user id, so mention
+  // links can land on the id-keyed profile route. Handles are stored
+  // lowercased by better-auth's username plugin. Blocked users resolve as
+  // not found, same as `byId`.
+  idByUsername: publicProcedure
+    .input(z.object({ username: z.string().trim().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const db = createDb();
+      const [found, { blocked }] = await Promise.all([
+        db.query.user.findFirst({
+          where: eq(user.username, input.username.toLowerCase()),
+          columns: { id: true },
+        }),
+        getViewerExclusions(db, ctx.session?.user.id),
+      ]);
+      if (!found || blocked.has(found.id)) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      return { id: found.id };
+    }),
+
   byId: publicProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

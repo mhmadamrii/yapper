@@ -10,6 +10,7 @@ import { ProfileHoverCard } from '@/components/profile-hover-card';
 import { UserAvatar } from '@/components/user-avatar';
 import { ZoomableImage } from '@/components/zoomable-image';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { InterestLink } from '@/components/interest-link';
 import { QuotedPostPreview } from '@/components/home/quoted-post-preview';
 import { LinkPreviewCard } from '@/components/home/link-preview-card';
 import { useSetLike } from '@/lib/use-set-like';
@@ -196,7 +197,7 @@ export function PostCard({
           <Show
             when={post.community}
             fallback={
-              <div className="flex items-baseline gap-1 text-sm">
+              <div className="flex items-center gap-1 text-sm">
                 <ProfileHoverCard userId={post.author.id}>
                   <button
                     onClick={handleProfileClick}
@@ -211,9 +212,12 @@ export function PostCard({
                 <span className="text-muted-foreground truncate">
                   @{handle}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground shrink-0">
                   · {timeAgo(post.createdAt)}
                 </span>
+                <Show when={post.interestSlug}>
+                  {(slug) => <InterestLink slug={slug} />}
+                </Show>
               </div>
             }
           >

@@ -52,6 +52,10 @@ services:
       # had (public convenience transforms, no per-request signing).
       # IMGPROXY_ALLOWED_SOURCES scopes what it'll fetch to our own bucket.
       IMGPROXY_ALLOWED_SOURCES: 's3://yapper-media/'
+      # Defaults to 1, which makes imgproxy keep only the first frame — every
+      # GIF came out as a still image. 300 frames covers typical reaction
+      # GIFs while capping the work one oversized upload can cause.
+      IMGPROXY_MAX_ANIMATION_FRAMES: '300'
     networks:
       - kommers_net
 

@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { For, Show } from '@/components/control-flow';
 import { UserAvatar } from '@/components/user-avatar';
@@ -94,6 +102,7 @@ export function MentionTextarea({
   rows,
   className,
   autoFocus,
+  ref,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -101,8 +110,13 @@ export function MentionTextarea({
   rows?: number;
   className?: string;
   autoFocus?: boolean;
+  // The underlying <textarea>, for callers that edit at the caret (e.g. the
+  // emoji picker).
+  ref?: Ref<HTMLTextAreaElement>;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Runs after mount, so the textarea is attached by then.
+  useImperativeHandle(ref, () => textareaRef.current!, []);
   const [caret, setCaret] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
